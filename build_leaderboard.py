@@ -1029,3 +1029,64 @@ with open(output_path, 'w', encoding='utf-8') as f:
 
 print(f'HTML已生成: {output_path}')
 print(f'文件大小: {len(html)/1024:.0f} KB')
+
+# ---------- 合并同事的潜力榜Tab ----------
+# 优先从本地备份读取同事版本，如果失败则尝试GitHub
+colleague_sources = [
+    ('本地备份', 'c:/Users/dengyuting02/WorkBuddy/20260514140206/colleague_backup.html'),
+    ('GitHub', None),  # None表示使用URL
+]
+
+colleague_html = None
+source_name = None
+
+for name, path in colleague_sources:
+    try:
+        if path:
+            with open(path, 'r', encoding='utf-8') as f:
+                colleague_html = f.read()
+            source_name = name
+            break
+        else:
+            import urllib.request
+            GITHUB_RAW_URL = 'https://raw.githubusercontent.com/wyxkhkmf96-bot/up_rank_week_new/main/charging_up_leaderboard.html'
+            req = urllib.request.Request(GITHUB_RAW_URL, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=30) as response:
+                colleague_html = response.read().decode('utf-8')
+            source_name = name
+            break
+    except Exception as e:
+        print(f'从{name}读取失败: {e}')
+        continue
+
+if colleague_html and source_name:
+    print(f'从{source_name}读取同事HTML成功，开始合并潜力榜Tab...')
+
+    # 提取潜力榜Tab
+    potential_start = colleague_html.find('<div id="tab-potential" class="page-content">')
+    if potential_start != -1:
+        # 找到对应的闭合div（到</body>之前）
+        body_end = colleague_html.find('</body>', potential_start)
+        if body_end != -1:
+            potential_tab = colleague_html[potential_start:body_end].strip()
+
+            # 读取我们刚生成的HTML
+            with open(output_path, 'r', encoding='utf-8') as f:
+                our_html = f.read()
+
+            # 在</body>前插入潜力榜Tab
+            our_body_end = our_html.find('</body>')
+            if our_body_end != -1:
+                final_html = our_html[:our_body_end] + '\n' + potential_tab + '\n' + our_html[our_body_end:]
+                with open(output_path, 'w', encoding='utf-8') as f:
+                    f.write(final_html)
+                print(f'已合并潜力榜Tab，最终文件大小: {len(final_html)/1024:.0f} KB')
+            else:
+                print('警告: 我们的HTML中找不到</body>，跳过合并')
+        else:
+            print('警告: 同事HTML中找不到</body>，跳过合并')
+    else:
+        print('警告: 同事HTML中找不到潜力榜Tab，跳过合并')
+else:
+    print('警告: 无法读取同事HTML，跳过潜力榜合并（新星榜不受影响）')
+    print('提示: 如需合并潜力榜，请确保 colleague_backup.html 存在或GitHub可访问')
