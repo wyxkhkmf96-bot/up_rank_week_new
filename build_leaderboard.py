@@ -1,7 +1,5 @@
 import pandas as pd
 import json
-import re
-from collections import Counter
 import math
 
 path = 'C:/Users/dengyuting02/Desktop/需求：充电新星up/表汇总5.22.xlsx'
@@ -33,15 +31,6 @@ with open(SUMMARY_PATH, 'r', encoding='utf-8') as f:
 print(f'已读取 {len(up_summaries)} 个UP的内容总结')
 
 # ---------- 数据整理 ----------
-def safe(v):
-    if v is None:
-        return None
-    if isinstance(v, float) and math.isnan(v):
-        return None
-    if isinstance(v, (pd.Timestamp,)):
-        return str(v.date())
-    return v
-
 def fmt_date(v):
     if pd.isna(v):
         return ''
