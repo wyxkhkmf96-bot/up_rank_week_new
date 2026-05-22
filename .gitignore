@@ -1,0 +1,10 @@
+# WorkBuddy内部配置
+.workbuddy/
+
+# 临时目录
+新尝试/
+
+# Python缓存
+__pycache__/
+*.pyc
+*.pyo
