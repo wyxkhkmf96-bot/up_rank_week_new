@@ -175,7 +175,9 @@ try:
                     ups_line = l.replace('代表UP：', '').replace('代表UP:', '').strip()
                 elif l.startswith('趋势描述：') or l.startswith('趋势描述:'):
                     desc_line = l.replace('趋势描述：', '').replace('趋势描述:', '').strip()
-            ups_tags = ''.join(f'<span class="hot-up-tag">{u.strip()}</span>' for u in ups_line.split('、') if u.strip())
+            ups_list = [u.strip() for u in ups_line.split('、') if u.strip()]
+            ups_list = ups_list[:5]  # 最多5个案例UP
+            ups_tags = ''.join(f'<span class="hot-up-tag">{u}</span>' for u in ups_list)
             cards.append(f'''<div class="hot-topic-card">
   <div class="hot-topic-title">🔥 {title}</div>
   <div class="hot-topic-ups">{ups_tags}</div>
