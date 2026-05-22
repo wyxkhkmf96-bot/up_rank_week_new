@@ -601,7 +601,7 @@ html = f"""<!DOCTYPE html>
       <div class="board-title">🏆 新星UP榜单</div>
       <div class="board-right">
         <div class="board-count" id="board-count"></div>
-        <a class="download-btn" id="download-btn" onclick="downloadCSV()" title="下载筛选后全量数据">
+        <a class="download-btn" id="download-btn" onclick="weeklyDownloadCSV()" title="下载筛选后全量数据">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           下载全量
         </a>
@@ -645,7 +645,7 @@ function fmtDt(s) {{
 }}
 
 // ===== 初始化筛选标签 =====
-function initFilterTags() {{
+function weeklyInitFilterTags() {{
   const wrap = document.getElementById('filter-tags');
   UP_TIDS.forEach(tid => {{
     const span = document.createElement('span');
@@ -658,7 +658,7 @@ function initFilterTags() {{
 }}
 
 // ===== 筛选逻辑（多选） =====
-function filterByTid(el, tid) {{
+function weeklyFilterByTid(el, tid) {{
   if (tid === 'all') {{
     // 点击"全部"：清除所有选中
     selectedTids = [];
@@ -679,12 +679,12 @@ function filterByTid(el, tid) {{
       document.querySelector('.filter-tag[data-tid="all"]').classList.add('active');
     }}
   }}
-  renderBoard();
-  renderPene();
+  weeklyRenderBoard();
+  weeklyRenderPene();
 }}
 
 // ===== 渲染渗透率信息（纵向多行模式） =====
-function renderPene() {{
+function weeklyRenderPene() {{
   const wrap = document.getElementById('pene-info');
   wrap.innerHTML = '';
   wrap.classList.remove('empty');
@@ -731,13 +731,13 @@ function renderPene() {{
 }}
 
 // ===== 获取当前筛选后的UP列表 =====
-function getFilteredUPS() {{
+function weeklyGetFilteredUPS() {{
   if (selectedTids.length === 0) return UPS;
   return UPS.filter(u => selectedTids.includes(u.tid_gen));
 }}
 
 // ===== 渲染UP榜单（Top 20） =====
-function renderBoard() {{
+function weeklyRenderBoard() {{
   const board = document.getElementById('up-board');
   board.innerHTML = '';
 
@@ -757,16 +757,16 @@ function renderBoard() {{
   }}
 
   top20.forEach((up, idx) => {{
-    board.appendChild(buildUpCard(up, idx + 1));
+    board.appendChild(weeklyBuildUpCard(up, idx + 1));
   }});
 
   setTimeout(() => {{
-    top20.forEach(up => renderChart(up.up_id));
+    top20.forEach(up => weeklyRenderChart(up.up_id));
   }}, 50);
 }}
 
 // ===== 下载CSV（筛选后全量） =====
-function downloadCSV() {{
+function weeklyDownloadCSV() {{
   const filtered = getFilteredUPS();
   if (!filtered.length) {{ alert('当前无数据可下载'); return; }}
 
@@ -805,7 +805,7 @@ function downloadCSV() {{
 }}
 
 // ===== 构建UP卡片 =====
-function buildUpCard(up, rank) {{
+function weeklyBuildUpCard(up, rank) {{
   const card = document.createElement('div');
   card.className = 'up-card';
   card.id = 'card-' + up.up_id;
@@ -873,20 +873,20 @@ function buildUpCard(up, rank) {{
       </div>
     </div>
 
-    <div class="expand-btn" id="expand-btn-${{up.up_id}}" onclick="toggleVideos('${{up.up_id}}')">
+    <div class="expand-btn" id="expand-btn-${{up.up_id}}" onclick="weeklyToggleVideos('${{up.up_id}}')">
       <span>📋 稿件明细（展示Top5 GMV稿件，共${{(VIDEOS[up.up_id] || []).length}}部充电稿件）</span>
       <span class="arrow">▼</span>
     </div>
 
     <div class="video-list" id="video-list-${{up.up_id}}">
-      ${{buildVideoList(up.up_id)}}
+      ${{weeklyBuildVideoList(up.up_id)}}
     </div>
   `;
   return card;
 }}
 
 // ===== 稿件列表（Top 5，去掉分区列） =====
-function buildVideoList(up_id) {{
+function weeklyBuildVideoList(up_id) {{
   const allVideos = VIDEOS[up_id] || [];
   const videos = allVideos.slice(0, 5);
   if (!videos.length) return '<div style="padding:16px;color:#999;text-align:center">暂无稿件数据</div>';
@@ -926,7 +926,7 @@ function buildVideoList(up_id) {{
 }}
 
 // ===== 展开/收起稿件 =====
-function toggleVideos(up_id) {{
+function weeklyToggleVideos(up_id) {{
   const list = document.getElementById('video-list-' + up_id);
   const btn = document.getElementById('expand-btn-' + up_id);
   const isOpen = list.classList.contains('open');
@@ -935,7 +935,7 @@ function toggleVideos(up_id) {{
 }}
 
 // ===== 渲染趋势图 =====
-function renderChart(up_id) {{
+function weeklyRenderChart(up_id) {{
   const canvas = document.getElementById('chart-' + up_id);
   if (!canvas) return;
 
@@ -1016,9 +1016,9 @@ function renderChart(up_id) {{
 }}
 
 // ===== 初始化 =====
-initFilterTags();
-renderPene();
-renderBoard();
+weeklyInitFilterTags();
+weeklyRenderPene();
+weeklyRenderBoard();
 </script>
 </body>
 </html>"""
@@ -1029,64 +1029,3 @@ with open(output_path, 'w', encoding='utf-8') as f:
 
 print(f'HTML已生成: {output_path}')
 print(f'文件大小: {len(html)/1024:.0f} KB')
-
-# ---------- 合并同事的潜力榜Tab ----------
-# 优先从本地备份读取同事版本，如果失败则尝试GitHub
-colleague_sources = [
-    ('本地备份', 'c:/Users/dengyuting02/WorkBuddy/20260514140206/colleague_backup.html'),
-    ('GitHub', None),  # None表示使用URL
-]
-
-colleague_html = None
-source_name = None
-
-for name, path in colleague_sources:
-    try:
-        if path:
-            with open(path, 'r', encoding='utf-8') as f:
-                colleague_html = f.read()
-            source_name = name
-            break
-        else:
-            import urllib.request
-            GITHUB_RAW_URL = 'https://raw.githubusercontent.com/wyxkhkmf96-bot/up_rank_week_new/main/charging_up_leaderboard.html'
-            req = urllib.request.Request(GITHUB_RAW_URL, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=30) as response:
-                colleague_html = response.read().decode('utf-8')
-            source_name = name
-            break
-    except Exception as e:
-        print(f'从{name}读取失败: {e}')
-        continue
-
-if colleague_html and source_name:
-    print(f'从{source_name}读取同事HTML成功，开始合并潜力榜Tab...')
-
-    # 提取潜力榜Tab
-    potential_start = colleague_html.find('<div id="tab-potential" class="page-content">')
-    if potential_start != -1:
-        # 找到对应的闭合div（到</body>之前）
-        body_end = colleague_html.find('</body>', potential_start)
-        if body_end != -1:
-            potential_tab = colleague_html[potential_start:body_end].strip()
-
-            # 读取我们刚生成的HTML
-            with open(output_path, 'r', encoding='utf-8') as f:
-                our_html = f.read()
-
-            # 在</body>前插入潜力榜Tab
-            our_body_end = our_html.find('</body>')
-            if our_body_end != -1:
-                final_html = our_html[:our_body_end] + '\n' + potential_tab + '\n' + our_html[our_body_end:]
-                with open(output_path, 'w', encoding='utf-8') as f:
-                    f.write(final_html)
-                print(f'已合并潜力榜Tab，最终文件大小: {len(final_html)/1024:.0f} KB')
-            else:
-                print('警告: 我们的HTML中找不到</body>，跳过合并')
-        else:
-            print('警告: 同事HTML中找不到</body>，跳过合并')
-    else:
-        print('警告: 同事HTML中找不到潜力榜Tab，跳过合并')
-else:
-    print('警告: 无法读取同事HTML，跳过潜力榜合并（新星榜不受影响）')
-    print('提示: 如需合并潜力榜，请确保 colleague_backup.html 存在或GitHub可访问')
