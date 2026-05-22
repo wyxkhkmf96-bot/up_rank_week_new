@@ -354,10 +354,265 @@
       grid-template-columns: 40px 1fr 70px 70px 60px 60px;
     }
   }
+/* ===== 页面级Tab ===== */
+.page-tabs {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 16px 24px 0;
+  display: flex;
+  gap: 4px;
+}
+.page-tab-btn {
+  padding: 10px 28px;
+  border: none;
+  background: #e8e8f0;
+  border-radius: 10px 10px 0 0;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #6b7280;
+}
+.page-tab-btn:hover { background: #f0f0f5; color: var(--pink); }
+.page-tab-btn.active {
+  background: var(--bg);
+  color: var(--pink);
+  font-weight: 700;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.04);
+}
+.page-content { display: none; }
+.page-content.active { display: block; }
+
+/* ===== 潜力榜筛选 ===== */
+.pot-filter-panel {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow);
+  border: 2px solid var(--pink);
+}
+.pot-filter-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.pot-filter-row:last-child { margin-bottom: 0; }
+.pot-filter-label {
+  font-size: 12px;
+  color: var(--pink);
+  font-weight: 700;
+  margin-right: 4px;
+  white-space: nowrap;
+  min-width: 60px;
+}
+.pot-search-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.pot-search-input {
+  flex: 1;
+  max-width: 280px;
+  padding: 8px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.pot-search-input:focus { border-color: var(--pink); }
+.pot-sort-select {
+  padding: 8px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: 12px;
+  outline: none;
+  cursor: pointer;
+}
+
+/* 潜力榜统计 */
+.pot-stats-bar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.pot-stat-card {
+  background: var(--card);
+  border-radius: 10px;
+  padding: 14px 20px;
+  box-shadow: var(--shadow);
+  flex: 1;
+  min-width: 130px;
+  text-align: center;
+}
+.pot-stat-val { font-size: 20px; font-weight: 700; color: var(--pink); }
+.pot-stat-label { font-size: 11px; color: var(--text-sub); margin-top: 4px; }
+
+/* 潜力榜卡片 */
+.pot-card {
+  background: var(--card);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  margin-bottom: 14px;
+  overflow: hidden;
+  transition: box-shadow 0.2s;
+  border: 1px solid transparent;
+}
+.pot-card:hover { box-shadow: var(--shadow-hover); border-color: rgba(251,114,153,0.2); }
+
+.pot-card-head {
+  padding: 14px 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.pot-rank {
+  min-width: 32px; height: 32px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 800;
+  flex-shrink: 0;
+  background: var(--pink-light);
+  color: var(--pink);
+}
+.pot-rank-1, .pot-rank-2, .pot-rank-3 {
+  background: linear-gradient(135deg, #FB7299, #FF9BB5);
+  color: white;
+}
+.pot-up-info { flex: 1; min-width: 0; }
+.pot-name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.pot-up-name { font-size: 15px; font-weight: 700; color: var(--text); }
+.pot-up-id { font-size: 11px; color: var(--text-light); }
+.pot-up-fans { font-size: 11px; color: var(--text-sub); background: #f5f5f5; border-radius: 10px; padding: 2px 8px; }
+.pot-tags { display: flex; gap: 5px; flex-wrap: wrap; }
+.pot-tag-chip { padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 500; }
+.pot-tag-zone { background: #e8f4ff; color: #1890ff; }
+.pot-tag-charge-h { background: #dcfce7; color: #16a34a; }
+.pot-tag-charge-m { background: #fef3c7; color: #d97706; }
+.pot-tag-charge-l { background: #fee2e2; color: #dc2626; }
+.pot-tag-biz-h { background: #fff7e6; color: #fa8c16; }
+.pot-tag-biz-m { background: #fef3c7; color: #d97706; }
+.pot-tag-biz-l { background: #f3f4f6; color: #6b7280; }
+
+.pot-space-link {
+  color: var(--pink); text-decoration: none; font-size: 11px;
+  border: 1px solid var(--pink); border-radius: 12px; padding: 3px 10px;
+  transition: all 0.2s; flex-shrink: 0; align-self: flex-start;
+  white-space: nowrap;
+}
+.pot-space-link:hover { background: var(--pink); color: white; }
+
+.pot-metrics {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  border-bottom: 1px solid var(--border);
+}
+.pot-metric-item {
+  padding: 10px 8px;
+  text-align: center;
+  border-right: 1px solid var(--border);
+}
+.pot-metric-item:last-child { border-right: none; }
+.pot-metric-val { font-size: 15px; font-weight: 700; color: var(--text); line-height: 1.2; }
+.pot-metric-val.pink { color: var(--pink); }
+.pot-metric-label { font-size: 10px; color: var(--text-light); margin-top: 2px; }
+
+.pot-analysis {
+  padding: 14px 18px;
+  background: #fafbff;
+  border-top: 1px solid var(--border);
+}
+.pot-analysis-title { font-size: 11px; color: var(--text-sub); font-weight: 600; margin-bottom: 6px; }
+.pot-analysis-text { font-size: 12px; color: var(--text); line-height: 1.7; }
+.pot-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  margin-right: 6px;
+}
+.pot-badge-high { background: #dcfce7; color: #16a34a; }
+.pot-badge-mid { background: #fef3c7; color: #d97706; }
+.pot-badge-low { background: #fee2e2; color: #dc2626; }
+.pot-badge-none { background: #f3f4f6; color: #6b7280; }
+
+.pot-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 20px;
+  padding-bottom: 20px;
+}
+.pot-page-btn {
+  padding: 6px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+.pot-page-btn:hover { border-color: var(--pink); color: var(--pink); }
+.pot-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.pot-page-info { font-size: 12px; color: var(--text-sub); }
+
+.pot-no-results {
+  text-align: center; padding: 60px 20px; color: var(--text-light); font-size: 14px;
+}
+.pot-no-results .icon { font-size: 40px; margin-bottom: 12px; }
+
+/* 分布总览表格 */
+#pot-stats-bar table th,
+#pot-stats-bar table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+#pot-stats-bar table td:nth-child(2),
+#pot-stats-bar table td:nth-child(3),
+#pot-stats-bar table th:nth-child(2),
+#pot-stats-bar table th:nth-child(3) {
+  text-align: center;
+}
+#pot-stats-bar table tr:last-child td { border-bottom: none; }
+#pot-stats-bar table tr:hover td { background: #f9fafb; }
+
+
+@media (max-width: 900px) {
+  .pot-metrics { grid-template-columns: repeat(3, 1fr); }
+  .page-tab-btn { padding: 8px 16px; font-size: 12px; }
+}
+
 </style>
 </head>
 <body>
 
+<div class="header">
+  <div class="header-top">
+    <div>
+      <h1>⚡ 充电UP主分析看板</h1>
+      <div class="header-meta">充电新星周榜 & 商业充电潜力UP主分析</div>
+    </div>
+    <div class="header-badge" id="total-badge"></div>
+  </div>
+</div>
+
+<!-- 页面级Tab -->
+<div class="page-tabs">
+  <button class="page-tab-btn active" onclick="switchTab('weekly')">充电新星UP主周榜</button>
+  <button class="page-tab-btn" onclick="switchTab('potential')">商业&充电潜力UP主榜</button>
+</div>
+
+<!-- Tab1: 充电新星UP主周榜 -->
+<div id="tab-weekly" class="page-content active">
 <div class="header">
   <div class="header-top">
     <div>
@@ -840,6 +1095,7 @@ initFilterTags();
 renderPene();
 renderBoard();
 </script>
+</div>
 
 <div id="tab-potential" class="page-content">
 <div class="main">
