@@ -19,7 +19,7 @@ class Tee:
 Tee(LOG_FILE)
 
 try:
-    path = r'C:/Users/dengyuting02/Desktop/需求：充电新星up/表汇总5.21.xlsx'
+    path = r'C:/Users/dengyuting02/Desktop/需求：充电新星up/表汇总5.22.xlsx'
     xl = pd.ExcelFile(path)
     df_up = pd.read_excel(path, sheet_name=xl.sheet_names[0])
     df_video = pd.read_excel(path, sheet_name=xl.sheet_names[2])
@@ -76,10 +76,20 @@ try:
             return f'[异常] {e}'
 
     up_ids = df_up['up_id'].tolist()
-    print(f'开始调用API，共{len(up_ids)}个UP...')
-    results = {}
+    # 断点续跑：加载已有结果
+    if os.path.exists(JSON_OUT):
+        try:
+            with open(JSON_OUT, 'r', encoding='utf-8') as f:
+                results = json.load(f)
+            print(f'加载已有结果: {len(results)}个UP，跳过已完成的')
+        except:
+            results = {}
+    else:
+        results = {}
+    todo_ids = [uid for uid in up_ids if str(uid) not in results]
+    print(f'开始调用API，共{len(todo_ids)}个UP待处理（总共{len(up_ids)}个）...')
     error_count = 0
-    for i, uid in enumerate(up_ids):
+    for i, uid in enumerate(todo_ids):
         uid_int = int(uid)
         row = df_up[df_up['up_id'] == uid_int]
         up_name = str(row['up名'].iloc[0]) if len(row) > 0 and pd.notna(row['up名'].iloc[0]) else str(uid)
@@ -96,6 +106,10 @@ try:
                 error_count += 1
             status = '✗' if has_err else '✓'
             print(f'  [{i+1}/{len(up_ids)}] {status} UP{uid} {up_name}: {result[:80]}')
+        # 边跑边写，防止超时丢失进度
+        if (i+1) % 10 == 0 or i+1 == len(up_ids):
+            with open(JSON_OUT, 'w', encoding='utf-8') as f:
+                json.dump(results, f, ensure_ascii=False, indent=2)
         time.sleep(0.4)
 
     with open(JSON_OUT, 'w', encoding='utf-8') as f:

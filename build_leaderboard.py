@@ -4,7 +4,7 @@ import re
 from collections import Counter
 import math
 
-path = 'C:/Users/dengyuting02/Desktop/需求：充电新星up/表汇总5.21.xlsx'
+path = 'C:/Users/dengyuting02/Desktop/需求：充电新星up/表汇总5.22.xlsx'
 SUMMARY_PATH = 'c:/Users/dengyuting02/WorkBuddy/20260514140206/up_summaries.json'
 
 # Excel sheet 名里有空格/数字前缀，以实际为准
