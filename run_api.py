@@ -19,7 +19,7 @@ class Tee:
 Tee(LOG_FILE)
 
 try:
-    path = r'C:/Users/dengyuting02/Desktop/需求：充电新星up/表汇总5.22.xlsx'
+    path = r'C:/Users/dengyuting02/Desktop/需求：充电新星up/表汇总5.25.xlsx'
     xl = pd.ExcelFile(path)
     df_up = pd.read_excel(path, sheet_name=xl.sheet_names[0])
     df_video = pd.read_excel(path, sheet_name=xl.sheet_names[2])
