@@ -13,7 +13,17 @@ print('实际sheet名:', sn)
 df_up = pd.read_excel(path, sheet_name=sn[0])
 df_trend = pd.read_excel(path, sheet_name=sn[1])
 df_video = pd.read_excel(path, sheet_name=sn[2])
-df_pene = pd.read_excel(path, sheet_name=sn[3])
+df_pene = pd.read_excel(path, sheet_name=sn[4])  # 表5 分区渗透
+
+# 读取相似UP数据（表4 共粉up）
+df_sim = pd.read_excel(path, sheet_name='表4 共粉up')
+# 构建相似UP映射 {up_id: "UP名1,UP名2,UP名3"}
+sim_map = {}
+for _, r in df_sim.iterrows():
+    uid = str(int(r['UP主ID']))
+    sim_names = str(r['Top3共粉UP昵称']) if pd.notna(r['Top3共粉UP昵称']) else ''
+    sim_map[uid] = sim_names
+print(f'相似UP数据: {len(sim_map)}个UP有共粉信息')
 
 print('UP列:', df_up.columns.tolist())
 print('趋势列:', df_trend.columns.tolist())
@@ -61,6 +71,7 @@ for _, row in df_up.iterrows():
         'cvr': round(float(row['近30日cvr']) * 100, 2) if pd.notna(row['近30日cvr']) else 0,
         'on_board': int(row['上榜次数']) if pd.notna(row['上榜次数']) else 1,
         'summary': up_summaries.get(up_id, ''),
+        'sim_ups': sim_map.get(up_id, ''),
     })
 
 # 趋势数据
@@ -762,7 +773,7 @@ function weeklyDownloadCSV() {{
   if (!filtered.length) {{ alert('当前无数据可下载'); return; }}
 
   const BOM = '\\uFEFF';
-  const header = '排名,UP名,UID,粉丝数,一级分区,二级分区,近30日GMV,近30日VV,ECPVV,充电人次,充电转化率,日均GMV,充电稿件数,首充发布时间,首充距今天数,上榜次数,空间链接,内容总结';
+  const header = '排名,UP名,UID,粉丝数,一级分区,二级分区,近30日GMV,近30日VV,ECPVV,充电人次,充电转化率,日均GMV,充电稿件数,首充发布时间,首充距今天数,上榜次数,空间链接,相似UP,内容总结';
   const rows = filtered.map((up, i) => [
     i + 1,
     '"' + up.uname.replace(/"/g, '""') + '"',
@@ -781,6 +792,7 @@ function weeklyDownloadCSV() {{
     up.days_since,
     up.on_board,
     up.space_url,
+    '"' + (up.sim_ups || '').replace(/"/g, '""') + '"',
     '"' + (up.summary || '').replace(/"/g, '""') + '"'
   ].join(','));
 
@@ -859,7 +871,7 @@ function weeklyBuildUpCard(up, rank) {{
         <canvas class="up-chart-canvas" id="chart-${{up.up_id}}"></canvas>
       </div>
       <div class="up-summary-wrap">
-        <div class="up-summary-title">📝 内容主题分析</div>
+        <div class="up-summary-title">📝 内容主题分析 ${{up.sim_ups ? '<span style="font-weight:400;color:var(--text-light);margin-left:8px;font-size:11px">👥 相似UP: ' + up.sim_ups + '</span>' : ''}}</div>
         <div class="up-summary-text">${{up.summary || '暂无内容信息'}}</div>
       </div>
     </div>
