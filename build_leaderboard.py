@@ -23,7 +23,7 @@ for _, r in df_sim.iterrows():
     uid = str(int(r['UP主ID']))
     sim_names = str(r['Top3共粉UP昵称']) if pd.notna(r['Top3共粉UP昵称']) else ''
     sim_map[uid] = sim_names
-print(f'相似UP数据: {len(sim_map)}个UP有共粉信息')
+print(f'共粉UP数据: {len(sim_map)}个UP有共粉信息')
 
 print('UP列:', df_up.columns.tolist())
 print('趋势列:', df_trend.columns.tolist())
@@ -591,7 +591,7 @@ html = f"""<!DOCTYPE html>
   <div class="filter-panel">
     <div class="filter-row">
       <span class="filter-label">📂 分区筛选：</span>
-      <span class="filter-tag active" data-tid="all" onclick="filterByTid(this, 'all')">全部</span>
+      <span class="filter-tag active" data-tid="all" onclick="weeklyFilterByTid(this, 'all')">全部</span>
       <span id="filter-tags"></span>
     </div>
     <div class="pene-info-bar" id="pene-info"></div>
@@ -654,7 +654,7 @@ function weeklyInitFilterTags() {{
     span.className = 'filter-tag';
     span.dataset.tid = tid;
     span.textContent = tid;
-    span.onclick = function() {{ filterByTid(this, tid); }};
+    span.onclick = function() {{ weeklyFilterByTid(this, tid); }};
     wrap.appendChild(span);
   }});
 }}
@@ -747,7 +747,7 @@ function weeklyRenderBoard() {{
     if (chartInstances[id]) {{ chartInstances[id].destroy(); delete chartInstances[id]; }}
   }});
 
-  const filtered = getFilteredUPS();
+  const filtered = weeklyGetFilteredUPS();
   const top20 = filtered.slice(0, 20);
 
   const labelTid = selectedTids.length === 0 ? '全部分区' : selectedTids.join('、');
@@ -769,11 +769,11 @@ function weeklyRenderBoard() {{
 
 // ===== 下载CSV（筛选后全量） =====
 function weeklyDownloadCSV() {{
-  const filtered = getFilteredUPS();
+  const filtered = weeklyGetFilteredUPS();
   if (!filtered.length) {{ alert('当前无数据可下载'); return; }}
 
   const BOM = '\\uFEFF';
-  const header = '排名,UP名,UID,粉丝数,一级分区,二级分区,近30日GMV,近30日VV,ECPVV,充电人次,充电转化率,日均GMV,充电稿件数,首充发布时间,首充距今天数,上榜次数,空间链接,相似UP,内容总结';
+  const header = '排名,UP名,UID,粉丝数,一级分区,二级分区,近30日GMV,近30日VV,ECPVV,充电人次,充电转化率,日均GMV,充电稿件数,首充发布时间,首充距今天数,上榜次数,空间链接,共粉UP,内容总结';
   const rows = filtered.map((up, i) => [
     i + 1,
     '"' + up.uname.replace(/"/g, '""') + '"',
@@ -871,7 +871,7 @@ function weeklyBuildUpCard(up, rank) {{
         <canvas class="up-chart-canvas" id="chart-${{up.up_id}}"></canvas>
       </div>
       <div class="up-summary-wrap">
-        <div class="up-summary-title">📝 内容主题分析 ${{up.sim_ups ? '<span style="font-weight:400;color:var(--text-light);margin-left:8px;font-size:11px">👥 相似UP: ' + up.sim_ups + '</span>' : ''}}</div>
+        <div class="up-summary-title">📝 内容主题分析 ${{up.sim_ups ? '<span style="font-weight:400;color:var(--text-light);margin-left:8px;font-size:11px">👥 共粉UP: ' + up.sim_ups + '</span>' : ''}}</div>
         <div class="up-summary-text">${{up.summary || '暂无内容信息'}}</div>
       </div>
     </div>
