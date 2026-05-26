@@ -2,101 +2,86 @@
 
 ---
 
-## 工作流①：UP主榜单 → Merge → Push
-
-### 产出物
-- `charging_up_leaderboard.html` — 新星榜独立版（单Tab）
-- `charging_up_leaderboard_merged.html` — 融合版（新星榜 + 稿件榜 + 同事潜力榜三Tab）
-
-### 依赖文件
-| 文件 | 说明 |
-|------|------|
-| `表汇总MMDD.xlsx` | 每周新数据（UP维度） |
-| `run_api.py` | 调用B站API生成UP内容总结 |
-| `gen_hot_topics.py` | 生成热点主题 |
-| `build_leaderboard.py` | 生成新星榜HTML |
-| `up_summaries.json` | UP总结缓存（脚本产出，需保留） |
-| `hot_topics.json` | 热点主题缓存（脚本产出，需保留） |
-| `colleague_backup.html` | 同事潜力榜备份（只读，更新时从GitHub拉取最新） |
-
-### 操作步骤
+## 一键工作流（推荐）
 
 ```bash
-# Step 1: 修改 run_api.py 第5行 path 为新Excel路径，运行（~10分钟，增量更新）
-python run_api.py
+# 更新两个榜单
+python pipeline.py --up-excel "C:/.../表汇总MM.DD.xlsx" --video-excel "C:/.../稿件榜MM.DD.xlsx"
 
-# Step 2: 生成热点主题（~1分钟）
-python gen_hot_topics.py
+# 只更新UP主榜单
+python pipeline.py --up-excel "C:/.../表汇总MM.DD.xlsx"
 
-# Step 3: 修改 build_leaderboard.py 第5行路径，生成独立版HTML（~10秒）
-python build_leaderboard.py
-# 产出: charging_up_leaderboard.html
+# 只更新稿件榜单
+python pipeline.py --video-excel "C:/.../稿件榜MM.DD.xlsx"
 
-# Step 4: 【Merge】把独立版新星榜内容同步到 merged.html
-# ⚠️ 只替换新星榜Tab的内容部分（tab-weekly），保留稿件榜Tab和同事潜力榜Tab完全不动
-# 具体：用独立版中 <div class="tab-content" id="tab-weekly"> ... </div> 内的全部内容
-#       替换 merged.html 中对应 tab-weekly 的内容
-# ⚠️ 不要动 script 标签中的同事代码（以 "=================================================\nconst POT_DATA" 为界）
-
-# Step 5: Push
-# git add charging_up_leaderboard.html charging_up_leaderboard_merged.html up_summaries.json hot_topics.json
-# git commit -m "update: YYYY-MM-DD UP主榜单"
-# git push
+# 跳过API调用（使用现有JSON缓存，仅重生成HTML）
+python pipeline.py --up-excel "..." --video-excel "..." --skip-api
 ```
+
+**产出文件：**
+- `charging_up_leaderboard.html` — 新星榜独立版
+- `charging_up_videos.html` — 稿件榜独立版
+- `charging_up_leaderboard_merged.html` — 三Tab融合版
 
 ---
 
-## 工作流②：稿件榜单 → Merge → Push
+## 分步工作流（手动控制各阶段）
 
-### 产出物
-- `charging_up_videos.html` — 稿件榜独立版（单页）
-- `charging_up_leaderboard_merged.html` — 融合版中的稿件榜Tab（同步更新）
+### UP主榜单
 
-### 依赖文件
-| 文件 | 说明 |
-|------|------|
-| `稿件榜MMDD.xlsx` | 每周新数据（稿件维度） |
-| `build_video_leaderboard.py` | 生成稿件榜HTML |
-| `merge_video_tab.py` | 将稿件榜融合到 merged.html 的脚本 |
+| 步骤 | 脚本 | 说明 | 耗时 |
+|------|------|------|------|
+| 1 | `run_api.py` | 增量调用B站API生成UP内容总结 | ~10分钟 |
+| 2 | `gen_hot_topics.py` | 调用API生成热点主题 | ~1分钟 |
+| 3 | `build_leaderboard.py` | 生成新星榜独立版HTML | ~10秒 |
 
-### 操作步骤
+### 稿件榜单
 
-```bash
-# Step 1: Excel → JSON（手动执行，见脚本内注释）
-# 用Python读取Excel，导出 video_top100.json
+| 步骤 | 脚本 | 说明 | 耗时 |
+|------|------|------|------|
+| 1 | `pipeline.py` 内联 | Excel → `video_top100.json` | ~5秒 |
+| 2 | `pipeline.py` 内联 | 调用API生成稿件热点主题 | ~1分钟 |
+| 3 | `build_video_leaderboard.py` | 生成稿件榜独立版HTML | ~10秒 |
 
-# Step 2: 调用B站API生成热点主题
-# 使用 build_video_leaderboard.py 中注释掉的API调用代码（或手动调用）
-# 产出: video_hot_topics.json
+### 融合版组装
 
-# Step 3: 确认 video_top100.json 和 video_hot_topics.json 存在后，生成独立版HTML（~10秒）
-python build_video_leaderboard.py
-# 产出: charging_up_videos.html
-
-# Step 4: 【Merge】把稿件榜融合到 merged.html
-# 运行融合脚本，自动处理变量名前缀、CSS合并、Tab插入
-python merge_video_tab.py
-# 产出: charging_up_leaderboard_merged.html（已包含三Tab）
-
-# Step 5: Push
-# git add charging_up_videos.html charging_up_leaderboard_merged.html video_top100.json video_hot_topics.json
-# git commit -m "update: YYYY-MM-DD 稿件榜单"
-# git push
-```
+| 步骤 | 脚本 | 说明 |
+|------|------|------|
+| 组装 | `pipeline.py` 内联 | 精确替换 merged.html 中的Tab内容和JS |
 
 ---
 
-## 页面功能速查
+## 文件说明
+
+| 文件 | 作用 |
+|------|------|
+| `pipeline.py` | **主控脚本**，一键完成全工作流 |
+| `run_api.py` | 调用B站Chatbot API生成UP内容总结 |
+| `gen_hot_topics.py` | 读取summary生成热点主题 |
+| `build_leaderboard.py` | 生成新星榜独立版HTML |
+| `build_video_leaderboard.py` | 生成稿件榜独立版HTML |
+| `up_summaries.json` | UP总结缓存（保留，增量更新） |
+| `hot_topics.json` | 热点主题缓存 |
+| `video_top100.json` | 稿件数据缓存 |
+| `video_hot_topics.json` | 稿件热点主题缓存 |
+| `colleague_backup.html` | 同事潜力榜备份（只读） |
+
+---
+
+## 页面功能
 
 | 页面 | 功能 |
 |------|------|
-| 新星榜独立版 / 融合版-新星Tab | 热点主题、上榜类型筛选、分区多选+渗透率、UP榜单(TOP20)、共粉UP、趋势图、下载CSV |
-| 融合版-稿件Tab | 5个热点主题(各5案例)、分区多选筛选、全量100条稿件榜单、下载CSV |
-| 融合版-潜力Tab | 同事维护，只读不修改 |
-| 稿件榜独立版 | 同融合版-稿件Tab，独立页面 |
+| 新星榜独立版 | 热点主题、上榜类型筛选、分区多选+渗透率、UP榜单(TOP20)、共粉UP、趋势图、下载CSV |
+| 稿件榜独立版 | 5个热点主题(各5案例)、分区多选筛选、全量100条稿件榜单、下载CSV |
+| 融合版-新星Tab | 同新星榜独立版 |
+| 融合版-稿件Tab | 同稿件榜独立版 |
+| 融合版-潜力Tab | 同事维护，pipeline只读不修改 |
+
+---
 
 ## 关键约束
 
-- **融合版 merged.html**：三Tab结构，修改时只动对应Tab的内容，其他Tab完全不动
-- **变量名隔离**：稿件榜JS变量和函数均已加 `video` 前缀（videoFilterByTid/videoRenderBoard/videoDownloadCSV/videoSelTids/VIDEO_DATA），避免与新星榜冲突
-- **缓存文件**：`up_summaries.json`、`hot_topics.json`、`video_top100.json`、`video_hot_topics.json` 需保留
+- **融合版 merged.html**：三Tab结构，pipeline精确替换对应Tab的HTML和JS，同事潜力Tab完全不动
+- **变量名隔离**：新星榜JS使用 `weekly` 前缀（`weeklyFilterByTid`/`weeklyRenderBoard`），稿件榜使用原始名（`filterByTid`/`renderVideos`/`VIDEOS`），无冲突
+- **缓存文件**：`up_summaries.json`、`hot_topics.json`、`video_top100.json`、`video_hot_topics.json` 需保留，支持增量更新
