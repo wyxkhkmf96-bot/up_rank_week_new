@@ -11,12 +11,15 @@ B站充电新星UP主周榜自动化生成系统。每周输入新数据文件�
 | `build_leaderboard.py` | 主脚本，读取Excel数据+API总结，生成最终HTML |
 | `charging_up_leaderboard.html` | 独立版（新星榜 only） |
 | `charging_up_leaderboard_merged.html` | 合并版（新星榜+同事潜力榜双Tab） |
+| `up_summaries.json` | UP内容总结缓存（`build_leaderboard.py`运行依赖） |
+| `hot_topics.json` | 热点主题缓存（`build_leaderboard.py`运行依赖） |
 | `colleague_backup.html` | 同事潜力榜备份（只读，更新时从GitHub拉取） |
 
 ## 换周操作流程（SOP）
 
 ```bash
 # Step 1: 修改 run_api.py 第5行 path 为新数据文件路径，然后运行（约10分钟）
+# 脚本会自动对比新旧Excel，只重新总结有变化的UP（新增或稿件变化），增量更新 up_summaries.json
 python run_api.py
 
 # Step 2: 生成热点主题（约1分钟）
@@ -40,8 +43,9 @@ python merge_colleague_tab.py
 ## 页面功能
 
 - 🔥 热点主题总结（大模型生成，卡片式展示）
+- 🏷️ 上榜类型筛选：全部 / 本期新上榜 / 连续上榜
 - 📂 分区多选筛选 + 渗透率数据联动
 - 🏆 UP主榜单（Top20展示，GMV降序）
 - 👥 共粉UP信息（内容分析旁显示相似UP）
-- 📥 下载筛选后全量数据（CSV格式）
+- 📥 下载筛选后全量数据（CSV格式，受分区+上榜类型双重筛选）
 - 📈 每个UP主的GMV趋势迷你图
