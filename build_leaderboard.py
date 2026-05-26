@@ -276,6 +276,7 @@ html = f"""<!DOCTYPE html>
   }}
   .filter-tag:hover {{ border-color: var(--pink); color: var(--pink); }}
   .filter-tag.active {{ background: var(--pink); border-color: var(--pink); color: white; font-weight: 600; }}
+  .filter-divider {{ border-top: 1px dashed var(--border); margin: 10px 0; }}
 
   /* 筛选下方的渗透率信息（纵向列表） */
   .pene-info-bar {{
@@ -590,6 +591,13 @@ html = f"""<!DOCTYPE html>
   <!-- 分区筛选 + 渗透率信息（融合模块） -->
   <div class="filter-panel">
     <div class="filter-row">
+      <span class="filter-label">🏷️ 上榜类型：</span>
+      <span class="filter-tag active" data-board="all" onclick="weeklyFilterByBoardType(this, 'all')">全部</span>
+      <span class="filter-tag" data-board="new" onclick="weeklyFilterByBoardType(this, 'new')">🆕 本期新上榜</span>
+      <span class="filter-tag" data-board="continuous" onclick="weeklyFilterByBoardType(this, 'continuous')">🔥 连续上榜</span>
+    </div>
+    <div class="filter-divider"></div>
+    <div class="filter-row">
       <span class="filter-label">📂 分区筛选：</span>
       <span class="filter-tag active" data-tid="all" onclick="weeklyFilterByTid(this, 'all')">全部</span>
       <span id="filter-tags"></span>
@@ -622,6 +630,7 @@ const PENE_L1 = {pene_l1_json};
 const UP_TIDS = {up_tids_json};
 
 let selectedTids = [];  // 多选：空数组=全部
+let selectedBoardType = 'all';  // 'all' | 'new' | 'continuous'
 const chartInstances = {{}};
 
 // ===== 格式化工具 =====
@@ -685,6 +694,14 @@ function weeklyFilterByTid(el, tid) {{
   weeklyRenderPene();
 }}
 
+// ===== 上榜类型筛选 =====
+function weeklyFilterByBoardType(el, type) {{
+  selectedBoardType = type;
+  document.querySelectorAll('.filter-tag[data-board]').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  weeklyRenderBoard();
+}}
+
 // ===== 渲染渗透率信息（纵向多行模式） =====
 function weeklyRenderPene() {{
   const wrap = document.getElementById('pene-info');
@@ -734,8 +751,18 @@ function weeklyRenderPene() {{
 
 // ===== 获取当前筛选后的UP列表 =====
 function weeklyGetFilteredUPS() {{
-  if (selectedTids.length === 0) return UPS;
-  return UPS.filter(u => selectedTids.includes(u.tid_gen));
+  let result = UPS;
+  // 分区筛选
+  if (selectedTids.length > 0) {{
+    result = result.filter(u => selectedTids.includes(u.tid_gen));
+  }}
+  // 上榜类型筛选
+  if (selectedBoardType === 'new') {{
+    result = result.filter(u => u.on_board === 1);
+  }} else if (selectedBoardType === 'continuous') {{
+    result = result.filter(u => u.on_board > 1);
+  }}
+  return result;
 }}
 
 // ===== 渲染UP榜单（Top 20） =====
@@ -751,7 +778,9 @@ function weeklyRenderBoard() {{
   const top20 = filtered.slice(0, 20);
 
   const labelTid = selectedTids.length === 0 ? '全部分区' : selectedTids.join('、');
-  document.getElementById('board-count').textContent = `${{labelTid}} · 共 ${{filtered.length}} 位UP主，展示前 ${{top20.length}} 名`;
+  const boardTypeMap = {{ 'all': '', 'new': ' · 本期新上榜', 'continuous': ' · 连续上榜' }};
+  const labelBoard = boardTypeMap[selectedBoardType] || '';
+  document.getElementById('board-count').textContent = `${{labelTid}}${{labelBoard}} · 共 ${{filtered.length}} 位UP主，展示前 ${{top20.length}} 名`;
 
   if (top20.length === 0) {{
     board.innerHTML = '<div class="no-results"><div class="icon">🔍</div>所选分区暂无上榜UP主</div>';
