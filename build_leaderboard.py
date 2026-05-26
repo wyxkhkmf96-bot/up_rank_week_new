@@ -625,7 +625,7 @@ html = f"""<!DOCTYPE html>
 <script>
 const UPS = {ups_json};
 const TRENDS = {trend_json};
-const WEEKLY_VIDEOS = {videos_json};
+const VIDEOS = {videos_json};
 const PENE_L1 = {pene_l1_json};
 const UP_TIDS = {up_tids_json};
 
@@ -906,7 +906,7 @@ function weeklyBuildUpCard(up, rank) {{
     </div>
 
     <div class="expand-btn" id="expand-btn-${{up.up_id}}" onclick="weeklyToggleVideos('${{up.up_id}}')">
-      <span>📋 稿件明细（展示Top5 GMV稿件，共${{(WEEKLY_VIDEOS[up.up_id] || []).length}}部充电稿件）</span>
+      <span>📋 稿件明细（展示Top5 GMV稿件，共${{(VIDEOS[up.up_id] || []).length}}部充电稿件）</span>
       <span class="arrow">▼</span>
     </div>
 
@@ -919,7 +919,7 @@ function weeklyBuildUpCard(up, rank) {{
 
 // ===== 稿件列表（Top 5，去掉分区列） =====
 function weeklyBuildVideoList(up_id) {{
-  const allVideos = WEEKLY_VIDEOS[up_id] || [];
+  const allVideos = VIDEOS[up_id] || [];
   const videos = allVideos.slice(0, 5);
   if (!videos.length) return '<div style="padding:16px;color:#999;text-align:center">暂无稿件数据</div>';
 
