@@ -1,0 +1,29 @@
+# 取数结果（不公开）
+result_code*.json
+
+# LLM 产出（含全部 UP 描述）
+up_summaries.json
+hot_topics.json
+video_hot_topics.json
+
+# 运行状态
+board_count.json
+api_run.log
+
+# 中间产物：双 tab html（只发布三 tab）
+charging_up_dashboard.html
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
