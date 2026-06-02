@@ -1,10 +1,48 @@
-# WorkBuddy内部配置
-.workbuddy/
+# 取数结果（不公开）
+result_code*.json
 
-# 临时目录
-新尝试/
+# LLM 产出（含全部 UP 描述）
+up_summaries.json
+hot_topics.json
+video_hot_topics.json
 
-# Python缓存
+# 运行状态
+board_count.json
+api_run.log
+run_all_output.log
+.phase1_meta.json
+
+# 中间产物：双 tab html（只发布三 tab）
+charging_up_dashboard.html
+
+# merge_tab3 拉取的远程缓存
+.charging_up_dashboard_3tab.remote.html
+
+# Python
 __pycache__/
 *.pyc
 *.pyo
+.venv/
+venv/
+
+# IDE
+.idea/
+.vscode/
+
+# WorkBuddy
+.workbuddy/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 旧文件
+build_leaderboard.py
+build_video_leaderboard.py
+charging_up_leaderboard.html
+charging_up_leaderboard_merged.html
+charging_up_videos.html
+colleague_backup.html
+merge_video_tab.py
+video_hot_topics.json
+video_top100.json

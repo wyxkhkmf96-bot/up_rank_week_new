@@ -1,87 +1,48 @@
-# 充电新星UP主周榜 & 充电稿件Top100
+# 充电UP榜单工作流
 
----
+B 站充电 UP 主 & 稿件分析看板的全自动生成流水线。
 
-## 一键工作流（推荐）
+## 流水线（7 步）
 
 ```bash
-# 更新两个榜单
-python pipeline.py --up-excel "C:/.../表汇总MM.DD.xlsx" --video-excel "C:/.../稿件榜MM.DD.xlsx"
-
-# 只更新UP主榜单
-python pipeline.py --up-excel "C:/.../表汇总MM.DD.xlsx"
-
-# 只更新稿件榜单
-python pipeline.py --video-excel "C:/.../稿件榜MM.DD.xlsx"
-
-# 跳过API调用（使用现有JSON缓存，仅重生成HTML）
-python pipeline.py --up-excel "..." --video-excel "..." --skip-api
+python run_all.py                # 1. 取数：6 SQL，串/并行
+python update_board_count.py     # 2. 累加上榜次数（天粒度）
+python run_api.py                # 3. UP 内容总结（增量调 LLM）
+python gen_hot_topics.py         # 4. UP 热点主题
+python gen_video_hot_topics.py   # 5. 稿件热点主题
+python build_dashboard.py        # 6. 生成双 tab dashboard
+python merge_tab3.py             # 7. 拉取并注入「商业&充电潜力UP主榜」Tab3
 ```
 
-**产出文件：**
-- `charging_up_leaderboard.html` — 新星榜独立版
-- `charging_up_videos.html` — 稿件榜独立版
-- `charging_up_leaderboard_merged.html` — 三Tab融合版
+## 环境
 
----
+跑 `run_all.py` 前需设置 berserker 平台 token：
 
-## 分步工作流（手动控制各阶段）
+```powershell
+# Windows PowerShell
+$env:ADHOC_TOKEN="your_token"
 
-### UP主榜单
-
-| 步骤 | 脚本 | 说明 | 耗时 |
-|------|------|------|------|
-| 1 | `run_api.py` | 增量调用B站API生成UP内容总结 | ~10分钟 |
-| 2 | `gen_hot_topics.py` | 调用API生成热点主题 | ~1分钟 |
-| 3 | `build_leaderboard.py` | 生成新星榜独立版HTML | ~10秒 |
-
-### 稿件榜单
-
-| 步骤 | 脚本 | 说明 | 耗时 |
-|------|------|------|------|
-| 1 | `pipeline.py` 内联 | Excel → `video_top100.json` | ~5秒 |
-| 2 | `pipeline.py` 内联 | 调用API生成稿件热点主题 | ~1分钟 |
-| 3 | `build_video_leaderboard.py` | 生成稿件榜独立版HTML | ~10秒 |
-
-### 融合版组装
-
-| 步骤 | 脚本 | 说明 |
-|------|------|------|
-| 组装 | `pipeline.py` 内联 | 精确替换 merged.html 中的Tab内容和JS |
-
----
+# Windows cmd
+set ADHOC_TOKEN=your_token
+```
 
 ## 文件说明
 
-| 文件 | 作用 |
-|------|------|
-| `pipeline.py` | **主控脚本**，一键完成全工作流 |
-| `run_api.py` | 调用B站Chatbot API生成UP内容总结 |
-| `gen_hot_topics.py` | 读取summary生成热点主题 |
-| `build_leaderboard.py` | 生成新星榜独立版HTML |
-| `build_video_leaderboard.py` | 生成稿件榜独立版HTML |
-| `up_summaries.json` | UP总结缓存（保留，增量更新） |
-| `hot_topics.json` | 热点主题缓存 |
-| `video_top100.json` | 稿件数据缓存 |
-| `video_hot_topics.json` | 稿件热点主题缓存 |
-| `colleague_backup.html` | 同事潜力榜备份（只读） |
+| 类别 | 文件 |
+|---|---|
+| 取数 SQL | `code1_up_rank.sql` ~ `code6_top100.sql` |
+| 主流程脚本 | `run_all.py` / `update_board_count.py` / `run_api.py` / `gen_hot_topics.py` / `gen_video_hot_topics.py` / `build_dashboard.py` / `merge_tab3.py` |
+| 最终产物 | `charging_up_dashboard_3tab.html` |
 
----
+中间数据（result_*.json、up_summaries.json、board_count.json 等）按 `.gitignore` 排除，本地生成不入库。
 
-## 页面功能
+## 上榜次数计数
 
-| 页面 | 功能 |
-|------|------|
-| 新星榜独立版 | 热点主题、上榜类型筛选、分区多选+渗透率、UP榜单(TOP20)、共粉UP、趋势图、下载CSV |
-| 稿件榜独立版 | 5个热点主题(各5案例)、分区多选筛选、全量100条稿件榜单、下载CSV |
-| 融合版-新星Tab | 同新星榜独立版 |
-| 融合版-稿件Tab | 同稿件榜独立版 |
-| 融合版-潜力Tab | 同事维护，pipeline只读不修改 |
+- 当前：天粒度（`update_board_count.py` 第 31 行 `GRANULARITY = 'day'`）
+- 切换周粒度：`python update_board_count.py --reset` 后改 `GRANULARITY = 'week'`
+- 同周期重复跑幂等不重加；本期未出现的 UP 自动从状态文件清理（脱榜清理）
 
----
+## 增量调用
 
-## 关键约束
-
-- **融合版 merged.html**：三Tab结构，pipeline精确替换对应Tab的HTML和JS，同事潜力Tab完全不动
-- **变量名隔离**：新星榜JS使用 `weekly` 前缀（`weeklyFilterByTid`/`weeklyRenderBoard`），稿件榜使用原始名（`filterByTid`/`renderVideos`/`VIDEOS`），无冲突
-- **缓存文件**：`up_summaries.json`、`hot_topics.json`、`video_top100.json`、`video_hot_topics.json` 需保留，支持增量更新
+- `run_api.py`：用稿件指纹（标题+分区+tag+ASR）的 sha1 决定是否重跑某 UP；`--force` 强制全跑
+- `gen_hot_topics.py` / `gen_video_hot_topics.py`：用输入 hash 判断；`--force` 强制重算

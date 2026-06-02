@@ -1,12 +1,42 @@
-import pandas as pd, requests, json, time, os, sys
+"""
+Step 2: UP内容总结（增量版）
 
-# 重定向stdout到文件
-LOG_FILE = r'c:\Users\dengyuting02\WorkBuddy\20260514140206\api_run.log'
-JSON_OUT = r'c:\Users\dengyuting02\WorkBuddy\20260514140206\up_summaries.json'
+判断重跑条件（满足任一即重跑）：
+1. 该 UP 在旧 up_summaries.json 中不存在
+2. 该 UP 的稿件输入指纹（标题+分区+tag+asr_data）与上次不同
+3. 上次结果是错误状态（[API错误] / [异常]）
+4. 命令行带 --force 参数：全量重跑
+
+JSON 格式：
+{
+  "_meta": {"prompt_version": "v1", "updated_at": "..."},
+  "summaries": {
+    "up_id": {"summary": "...", "input_hash": "abc..."},
+    ...
+  }
+}
+"""
+import json
+import requests
+import time
+import os
+import sys
+import hashlib
+from collections import defaultdict
+from datetime import datetime
+
+BASE = r'C:\Users\dengyuting02\WorkBuddy\20260514140206'
+LOG_FILE = os.path.join(BASE, 'api_run.log')
+JSON_OUT = os.path.join(BASE, 'up_summaries.json')
+UP_RANK = os.path.join(BASE, 'result_code1_up_rank.json')
+ARCH = os.path.join(BASE, 'result_code3_arch_charge.json')
+
+PROMPT_VERSION = 'v1'
+FORCE = '--force' in sys.argv
 
 class Tee:
-    def __init__(self, file):
-        self.file = open(file, 'w', encoding='utf-8')
+    def __init__(self, path):
+        self.file = open(path, 'w', encoding='utf-8')
         self.stdout = sys.stdout
         sys.stdout = self
     def write(self, s):
@@ -18,15 +48,7 @@ class Tee:
 
 Tee(LOG_FILE)
 
-try:
-    path = r'C:/Users/dengyuting02/Desktop/需求：充电新星up/表汇总5.25.xlsx'
-    xl = pd.ExcelFile(path)
-    df_up = pd.read_excel(path, sheet_name=xl.sheet_names[0])
-    df_video = pd.read_excel(path, sheet_name=xl.sheet_names[2])
-
-    print(f'UP总数: {len(df_up)}, 稿件表记录: {len(df_video)}')
-
-    PROMPT_BASE = '''你是B站内容分析师。请根据以下该UP主的视频数据，写一段120字以内的内容总结。
+PROMPT_BASE = '''你是B站内容分析师。请根据以下该UP主的视频数据，写一段120字以内的内容总结。
 
 ## 输入数据
 - UP主昵称：{up_name}
@@ -48,75 +70,188 @@ try:
 ## 示例输出
 ①古装家庭伦理剧情向剪辑，聚焦传统家族中长辈对晚辈的教育训诫场景；②着重呈现父子（舅甥）之间因违规行为引发的严厉管教过程'''
 
-    def call_api(up_id, up_name, vids, vid_cnt):
-        video_list = []
-        for _, v in vids.iterrows():
-            title = str(v['稿件标题']) if pd.notna(v['稿件标题']) else '无标题'
-            tag = str(v['tag']) if pd.notna(v['tag']) else ''
-            asr = str(v['asr_data']) if pd.notna(v['asr_data']) else ''
-            tid = str(v['一级分区']) if pd.notna(v['一级分区']) else ''
-            sub = str(v['二级分区']) if pd.notna(v['二级分区']) else ''
-            asr_short = asr[:300] + '...' if len(asr) > 300 else asr
-            video_list.append(f'{title} | {tid}/{sub} | {tag} | {asr_short}')
-        video_str = '\n'.join(video_list)
-        prompt = PROMPT_BASE.format(up_name=up_name, vid_cnt=vid_cnt, video_list=video_str)
-        try:
-            resp = requests.post('http://bxk.bilibili.co/api/bxk/private_chat',
-                headers={'Content-Type': 'application/json; charset=utf-8', 'User-Agent': 'Mozilla/5.0'},
-                json={'kid': '1081', 'query': prompt, 'chat_mod': 'bot'},
-                timeout=60)
-            obj = resp.json()
-            if obj.get('code') == 0:
-                data = obj.get('data', {})
-                answer = data.get('answer', '') if isinstance(data, dict) else ''
-                if answer:
-                    return answer.strip()
-            return f'[API错误] code={obj.get("code")} msg={obj.get("msg")}'
-        except Exception as e:
-            return f'[异常] {e}'
 
-    up_ids = df_up['up_id'].tolist()
-    # 断点续跑：加载已有结果
-    if os.path.exists(JSON_OUT):
-        try:
-            with open(JSON_OUT, 'r', encoding='utf-8') as f:
-                results = json.load(f)
-            print(f'加载已有结果: {len(results)}个UP，跳过已完成的')
-        except:
-            results = {}
+def compute_up_hash(up_name, videos):
+    """对 UP 的输入数据计算指纹（稿件按 avid 排序后拼接关键字段）"""
+    sig_parts = [up_name, str(len(videos))]
+    sorted_videos = sorted(videos, key=lambda v: str(v.get('稿件ID', '')))
+    for v in sorted_videos:
+        title = str(v.get('稿件标题') or '')
+        tag = str(v.get('tag') or '')
+        asr = str(v.get('asr_data') or '')[:300]
+        tid = str(v.get('一级分区') or '')
+        sub = str(v.get('二级分区') or '')
+        sig_parts.append(f'{title}|{tid}/{sub}|{tag}|{asr}')
+    sig = '\n'.join(sig_parts)
+    return hashlib.sha1(sig.encode('utf-8')).hexdigest()[:16]
+
+
+def call_api(up_name, videos):
+    video_list = []
+    for v in videos:
+        title = str(v.get('稿件标题') or '无标题')
+        tag = str(v.get('tag') or '')
+        asr = str(v.get('asr_data') or '')
+        tid = str(v.get('一级分区') or '')
+        sub = str(v.get('二级分区') or '')
+        asr_short = asr[:300] + '...' if len(asr) > 300 else asr
+        video_list.append(f'{title} | {tid}/{sub} | {tag} | {asr_short}')
+    video_str = '\n'.join(video_list)
+    prompt = PROMPT_BASE.format(up_name=up_name, vid_cnt=len(videos), video_list=video_str)
+    try:
+        resp = requests.post(
+            'http://bxk.bilibili.co/api/bxk/private_chat',
+            headers={'Content-Type': 'application/json; charset=utf-8', 'User-Agent': 'Mozilla/5.0'},
+            json={'kid': '1081', 'query': prompt, 'chat_mod': 'bot'},
+            timeout=60,
+        )
+        obj = resp.json()
+        if obj.get('code') == 0:
+            data = obj.get('data', {})
+            answer = data.get('answer', '') if isinstance(data, dict) else ''
+            if answer:
+                return answer.strip()
+        return f'[API错误] code={obj.get("code")} msg={obj.get("msg")}'
+    except Exception as e:
+        return f'[异常] {e}'
+
+
+def load_old():
+    """加载旧的 up_summaries.json，兼容旧版（裸 dict）和新版（{summaries: {...}}）"""
+    if not os.path.exists(JSON_OUT):
+        return {}, {}
+    try:
+        with open(JSON_OUT, 'r', encoding='utf-8') as f:
+            d = json.load(f)
+    except Exception:
+        return {}, {}
+    if isinstance(d, dict) and 'summaries' in d:
+        meta = d.get('_meta', {})
+        return d['summaries'], meta
+    # 旧版：直接是 {up_id: text}
+    return {uid: {'summary': v, 'input_hash': ''} for uid, v in d.items()}, {}
+
+
+def save(summaries):
+    out = {
+        '_meta': {
+            'prompt_version': PROMPT_VERSION,
+            'updated_at': datetime.now().isoformat(timespec='seconds'),
+            'count': len(summaries),
+        },
+        'summaries': summaries,
+    }
+    with open(JSON_OUT, 'w', encoding='utf-8') as f:
+        json.dump(out, f, ensure_ascii=False, indent=2)
+
+
+def main():
+    with open(UP_RANK, 'r', encoding='utf-8') as f:
+        up_rows = json.load(f)['data']['result']
+    with open(ARCH, 'r', encoding='utf-8') as f:
+        arch_rows = json.load(f)['data']['result']
+
+    up_name_map = {str(r['up_id']): r['up名'] for r in up_rows}
+    up_ids = [str(r['up_id']) for r in up_rows]
+    up_id_set = set(up_ids)
+    print(f'新星UP数: {len(up_ids)}, 稿件表总记录: {len(arch_rows)}')
+
+    # 只保留新星UP的稿件，黑马UP不需要内容总结
+    videos_by_up = defaultdict(list)
+    for r in arch_rows:
+        uid = str(r['UP主ID'])
+        if uid in up_id_set:
+            videos_by_up[uid].append(r)
+    skipped = len(arch_rows) - sum(len(v) for v in videos_by_up.values())
+    if skipped:
+        print(f'过滤黑马UP稿件: {skipped} 条（仅新星UP参与hash计算和API调用）')
+
+    old_summaries, old_meta = load_old()
+    old_prompt_ver = old_meta.get('prompt_version', '')
+
+    if FORCE:
+        print('--force 模式：强制全量重跑')
+        old_summaries = {}
+    elif old_prompt_ver and old_prompt_ver != PROMPT_VERSION:
+        print(f'prompt_version 升级 ({old_prompt_ver} → {PROMPT_VERSION})，全量重跑')
+        old_summaries = {}
     else:
-        results = {}
-    todo_ids = [uid for uid in up_ids if str(uid) not in results]
-    print(f'开始调用API，共{len(todo_ids)}个UP待处理（总共{len(up_ids)}个）...')
+        print(f'增量模式：旧结果 {len(old_summaries)} 条')
+
+    # 移除已不在最新榜单中的 UP（避免无效残留）
+    new_summaries = {uid: old_summaries[uid] for uid in up_ids if uid in old_summaries}
+    removed = len(old_summaries) - len(new_summaries)
+    if removed > 0:
+        print(f'清理旧 UP（已不在最新榜单）: {removed} 条')
+
+    # 判断每个 UP 是否需要重跑
+    todo = []
+    reuse = 0
+    for uid in up_ids:
+        up_name = up_name_map.get(uid, uid)
+        videos = videos_by_up.get(uid, [])
+        new_hash = compute_up_hash(up_name, videos) if videos else 'no_videos'
+
+        old = new_summaries.get(uid)
+        if old is None:
+            todo.append((uid, '新UP'))
+            continue
+        old_summary = old.get('summary', '')
+        old_hash = old.get('input_hash', '')
+        if not old_hash:
+            todo.append((uid, '旧版无hash'))
+            continue
+        if old_hash != new_hash:
+            todo.append((uid, '稿件变动'))
+            continue
+        if old_summary.startswith('[API') or old_summary.startswith('[异常'):
+            todo.append((uid, '上次错误'))
+            continue
+        reuse += 1
+
+    print(f'\n复用 {reuse} 条，待重跑 {len(todo)} 条')
+    if not todo:
+        save(new_summaries)
+        print(f'\n无需调用API，已保存: {JSON_OUT}')
+        return
+
+    # 按原因分类显示
+    by_reason = defaultdict(int)
+    for _, reason in todo:
+        by_reason[reason] += 1
+    for reason, n in by_reason.items():
+        print(f'  · {reason}: {n} 条')
+    print()
+
     error_count = 0
-    for i, uid in enumerate(todo_ids):
-        uid_int = int(uid)
-        row = df_up[df_up['up_id'] == uid_int]
-        up_name = str(row['up名'].iloc[0]) if len(row) > 0 and pd.notna(row['up名'].iloc[0]) else str(uid)
-        vids = df_video[df_video['UP主ID'] == uid_int]
-        if len(vids) == 0:
-            results[str(uid)] = '暂无稿件内容信息'
-            print(f'  [{i+1}/{len(up_ids)}] UP{uid} {up_name}: 无稿件')
+    for i, (uid, reason) in enumerate(todo):
+        up_name = up_name_map.get(uid, uid)
+        videos = videos_by_up.get(uid, [])
+        new_hash = compute_up_hash(up_name, videos) if videos else 'no_videos'
+        if not videos:
+            new_summaries[uid] = {'summary': '暂无稿件内容信息', 'input_hash': new_hash}
+            print(f'  [{i+1}/{len(todo)}] UP{uid} {up_name} ({reason}): 无稿件')
         else:
-            vid_cnt = len(vids)
-            result = call_api(uid, up_name, vids, vid_cnt)
-            results[str(uid)] = result
+            result = call_api(up_name, videos)
+            new_summaries[uid] = {'summary': result, 'input_hash': new_hash}
             has_err = result.startswith('[API') or result.startswith('[异常')
             if has_err:
                 error_count += 1
             status = '✗' if has_err else '✓'
-            print(f'  [{i+1}/{len(up_ids)}] {status} UP{uid} {up_name}: {result[:80]}')
-        # 边跑边写，防止超时丢失进度
-        if (i+1) % 10 == 0 or i+1 == len(up_ids):
-            with open(JSON_OUT, 'w', encoding='utf-8') as f:
-                json.dump(results, f, ensure_ascii=False, indent=2)
+            print(f'  [{i+1}/{len(todo)}] {status} UP{uid} {up_name} ({reason}): {result[:80]}')
+
+        if (i + 1) % 10 == 0 or i + 1 == len(todo):
+            save(new_summaries)
         time.sleep(0.4)
 
-    with open(JSON_OUT, 'w', encoding='utf-8') as f:
-        json.dump(results, f, ensure_ascii=False, indent=2)
-    print(f'\n完成！共{len(results)}个UP，错误{error_count}个，JSON已保存: {JSON_OUT}')
+    save(new_summaries)
+    print(f'\n完成！共{len(new_summaries)}个UP（重跑{len(todo)}，错误{error_count}），JSON已保存: {JSON_OUT}')
 
-except Exception as e:
-    print(f'脚本异常: {e}')
-    import traceback
-    traceback.print_exc()
+
+if __name__ == '__main__':
+    try:
+        main()
+    except Exception as e:
+        print(f'脚本异常: {e}')
+        import traceback
+        traceback.print_exc()
