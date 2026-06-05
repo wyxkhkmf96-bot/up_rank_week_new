@@ -12,10 +12,7 @@ api_run.log
 run_all_output.log
 .phase1_meta.json
 
-# 中间产物：双 tab html（只发布三 tab）
-charging_up_dashboard.html
-
-# merge_tab3 拉取的远程缓存
+# merge_tab3 拉取的远程缓存（3tab 已废弃）
 .charging_up_dashboard_3tab.remote.html
 
 # Python
