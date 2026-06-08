@@ -18,7 +18,7 @@ charge_video_list AS (
     WHERE a.log_date = b_current_datedelta('-1')
       AND a.log_hour = '23'
       AND b.log_date = b_current_datedelta('-1')
-      AND b.state = 0
+      --AND b.state = 0
 ),
 vv_daily AS (
     SELECT
