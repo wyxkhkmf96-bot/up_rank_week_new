@@ -2,10 +2,12 @@
 Step 2: UP内容总结（增量版）
 
 判断重跑条件（满足任一即重跑）：
-1. 该 UP 在旧 up_summaries.json 中不存在
-2. 该 UP 的稿件输入指纹（标题+分区+tag+asr_data）与上次不同
-3. 上次结果是错误状态（[API错误] / [异常]）
+1. 该 UP 在旧 up_summaries.json 中不存在（新UP）
+2. 本周新上榜（上榜次数 == 1）且稿件输入指纹（标题+分区+tag+asr_data）与上次不同
+3. 本周新上榜（上榜次数 == 1）且上次结果是错误状态（[API错误] / [异常]）
 4. 命令行带 --force 参数：全量重跑
+
+连续在榜的UP（上榜次数 > 1），即使稿件变动也不跑LLM，直接复用旧结果。
 
 JSON 格式：
 {
@@ -184,7 +186,11 @@ def main():
     if removed > 0:
         print(f'清理旧 UP（已不在最新榜单）: {removed} 条')
 
+    # 构建 {up_id: 上榜次数} 映射，用于判断本周是否新上榜
+    board_count_map = {str(r['up_id']): r.get('上榜次数', 1) for r in up_rows}
+
     # 判断每个 UP 是否需要重跑
+    # 策略：LLM 只对本周新上榜的UP做总结，连续在榜UP即使稿件变动也不跑
     todo = []
     reuse = 0
     for uid in up_ids:
@@ -198,6 +204,13 @@ def main():
             continue
         old_summary = old.get('summary', '')
         old_hash = old.get('input_hash', '')
+
+        # 连续在榜（上榜次数 > 1），不跑LLM，直接复用旧结果
+        board_count = board_count_map.get(uid, 1)
+        if board_count > 1:
+            reuse += 1
+            continue
+
         if not old_hash:
             todo.append((uid, '旧版无hash'))
             continue
@@ -209,7 +222,7 @@ def main():
             continue
         reuse += 1
 
-    print(f'\n复用 {reuse} 条，待重跑 {len(todo)} 条')
+    print(f'\n复用 {reuse} 条（含连续在榜跳过），待重跑 {len(todo)} 条')
     if not todo:
         save(new_summaries)
         print(f'\n无需调用API，已保存: {JSON_OUT}')

@@ -2,7 +2,7 @@
 
 使用方式：
   python update_board_count.py            # 正常跑：累加本周计数
-  python update_board_count.py --reset    # 清零：删除累加状态，移除回填字段
+  python update_board_count.py --reset    # 重置：当前榜单UP计数设为1，下周起重新累加
 
 放在 run_all.py 之后、build_dashboard.py 之前。
 读 result_code1_up_rank.json 的本期 UP 列表，
@@ -17,6 +17,7 @@
     上次记录是"上一周期" → count + 1（连续在榜）
     没记录或记录更早 → count = 1（新上榜，因脱榜会被清理，重新出现就当新 UP）
 - 当前榜单未出现的 UP：直接从 board_count.json 中删掉（脱榜清理）
+- --reset 行为：不清零，而是把当前榜单所有UP的计数设为1（本周为起始），下周起在此基础上继续累加
 """
 import json
 import os
@@ -74,18 +75,25 @@ up_rank = load_up_rank()
 rows = up_rank['data']['result']
 
 if RESET:
-    if os.path.exists(COUNT_PATH):
-        os.remove(COUNT_PATH)
-        print(f'✓ 已删除累加状态: {COUNT_PATH}')
-    else:
-        print(f'  累加状态文件本就不存在: {COUNT_PATH}')
-    removed = 0
+    this_period = period_str(date.today())
+    new_counts = {}
     for r in rows:
-        if '上榜次数' in r:
-            del r['上榜次数']
-            removed += 1
+        uid = str(r['up_id'])
+        new_counts[uid] = {'count': 1, 'last_period': this_period}
+        r['上榜次数'] = 1
+
+    state = {
+        'counts': new_counts,
+        '_meta': {
+            'granularity': GRANULARITY,
+            'last_update_period': this_period,
+            'updated_at': date.today().isoformat(),
+        }
+    }
+    save_state(state)
+    print(f'✓ 累加状态已重置: 当前 {len(rows)} 个UP，计数全部设为1（{this_period}）')
+    print(f'  下周开始，连续在榜的UP会在此基础上继续累加')
     save_up_rank(up_rank)
-    print(f'✓ 已从 result_code1_up_rank.json 移除"上榜次数"字段（{removed}/{len(rows)} 行）')
     sys.exit(0)
 
 
