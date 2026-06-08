@@ -184,6 +184,17 @@ def run_phase1():
         print('代码6失败/无结果，黑马 up_id 为空（不影响后续）', file=sys.stderr)
 
     save_phase1_meta(up_ids_new, up_ids_dark)
+
+    # 阶段1数据校验
+    print('\n' + '=' * 60, file=sys.stderr)
+    print('阶段1数据校验:', file=sys.stderr)
+    if len(up_ids_new) == 0:
+        print('ERROR: 新星UP数量为0，检查code1 SQL和数据源', file=sys.stderr)
+        sys.exit(1)
+    print(f'  ✓ 新星UP: {len(up_ids_new)} 个', file=sys.stderr)
+    print(f'  ✓ 黑马UP: {len(up_ids_dark)} 个', file=sys.stderr)
+    print('=' * 60, file=sys.stderr)
+
     print('\n' + '=' * 60, file=sys.stderr)
     print('阶段1完成!', file=sys.stderr)
     print('=' * 60, file=sys.stderr)
@@ -222,6 +233,29 @@ def run_phase2():
 
     for t in threads:
         t.join()
+
+    # 阶段2数据校验
+    print('\n' + '=' * 60, file=sys.stderr)
+    print('阶段2数据校验:', file=sys.stderr)
+    import os
+    for code, path, desc in [
+        ('code2', f'{BASE_DIR}/result_code2_daily_gmv_vv.json', '日维度GMV_VV'),
+        ('code3', f'{BASE_DIR}/result_code3_arch_charge.json', '稿件充电明细'),
+        ('code4', f'{BASE_DIR}/result_code4_top3_fans.json', 'Top3共粉UP'),
+        ('code5', f'{BASE_DIR}/result_code5_penetration.json', '分区渗透率'),
+    ]:
+        if not os.path.exists(path):
+            print(f'  ✗ {desc}: 文件不存在', file=sys.stderr)
+            continue
+        with open(path, 'r', encoding='utf-8') as f:
+            d = json.load(f)
+        rows = d.get('data', {}).get('result', [])
+        row_count = len(rows)
+        if row_count == 0:
+            print(f'  ✗ {desc}: 0行，数据异常', file=sys.stderr)
+        else:
+            print(f'  ✓ {desc}: {row_count} 行', file=sys.stderr)
+    print('=' * 60, file=sys.stderr)
 
     print('\n' + '=' * 60, file=sys.stderr)
     print('阶段2完成!', file=sys.stderr)
