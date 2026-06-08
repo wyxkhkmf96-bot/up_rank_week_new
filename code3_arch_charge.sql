@@ -56,25 +56,34 @@ asr_content AS (
     GROUP BY 1
 )
 SELECT
-    a.up_id AS `UP主ID`,
-    a.uname AS `UP主昵称`,
-    a.avid as `稿件ID`,
-    a.title AS `稿件标题`,
-    a.arch_type AS `稿件类型`,
-    CONCAT('https://www.bilibili.com/video/av', a.avid) AS `播放页`,
-    a.pubtime AS `发布时间`,
-    a.tid_name AS `一级分区`,
-    a.sub_tid_name AS `二级分区`,
-    a.tag as `tag`,
-    ROUND(COALESCE(b.total_gmv, 0) / 1000.0, 2) AS `稿件近30日GMV`,
-    COALESCE(c.total_vv, 0) AS `稿件近30日播放量`,
-    ROUND(COALESCE(b.total_gmv, 0) / NULLIF(c.total_vv, 0) * 1000 / 1000.0, 2) AS `稿件近30日ECPVV`,
-    COALESCE(b.charge_users, 0) AS `稿件近30日充电人数`,
-    ROUND(COALESCE(b.charge_users, 0) / NULLIF(c.total_play_uv, 0), 4) AS `稿件近30日转化率`,
-    SUBSTRING(d.asr_data, 1, 1000) AS asr_data
-FROM arch_info a
-LEFT JOIN charge_revenue b ON a.avid = b.avid
-LEFT JOIN play_stats c ON a.avid = c.avid
-LEFT JOIN asr_content d ON a.avid = d.avid
-WHERE b.total_gmv > 0
-ORDER BY b.total_gmv DESC
+    `UP主ID`, `UP主昵称`, `稿件ID`, `稿件标题`, `稿件类型`, `播放页`,
+    `发布时间`, `一级分区`, `二级分区`, `tag`, `稿件近30日GMV`,
+    `稿件近30日播放量`, `稿件近30日ECPVV`, `稿件近30日充电人数`,
+    `稿件近30日转化率`, asr_data
+FROM (
+    SELECT
+        a.up_id AS `UP主ID`,
+        a.uname AS `UP主昵称`,
+        a.avid as `稿件ID`,
+        a.title AS `稿件标题`,
+        a.arch_type AS `稿件类型`,
+        CONCAT('https://www.bilibili.com/video/av', a.avid) AS `播放页`,
+        a.pubtime AS `发布时间`,
+        a.tid_name AS `一级分区`,
+        a.sub_tid_name AS `二级分区`,
+        a.tag as `tag`,
+        ROUND(COALESCE(b.total_gmv, 0) / 1000.0, 2) AS `稿件近30日GMV`,
+        COALESCE(c.total_vv, 0) AS `稿件近30日播放量`,
+        ROUND(COALESCE(b.total_gmv, 0) / NULLIF(c.total_vv, 0) * 1000 / 1000.0, 2) AS `稿件近30日ECPVV`,
+        COALESCE(b.charge_users, 0) AS `稿件近30日充电人数`,
+        ROUND(COALESCE(b.charge_users, 0) / NULLIF(c.total_play_uv, 0), 4) AS `稿件近30日转化率`,
+        SUBSTRING(d.asr_data, 1, 1000) AS asr_data,
+        ROW_NUMBER() OVER (PARTITION BY a.up_id ORDER BY b.total_gmv DESC) AS rn
+    FROM arch_info a
+    LEFT JOIN charge_revenue b ON a.avid = b.avid
+    LEFT JOIN play_stats c ON a.avid = c.avid
+    LEFT JOIN asr_content d ON a.avid = d.avid
+    WHERE b.total_gmv > 0
+) t
+WHERE rn <= 5
+ORDER BY `稿件近30日GMV` DESC
