@@ -33,7 +33,7 @@ LEFT JOIN premiere_avids b ON a.avid = b.avid
 LEFT JOIN up_info u ON a.up_id = u.up_id
 WHERE a.log_date = b_current_datedelta('-1')
   AND a.first_pub_time BETWEEN DATE_SUB(CURRENT_DATE, 30) AND DATE_SUB(CURRENT_DATE, 1)
-  --AND a.state = 0
+  AND a.state = 0
 GROUP BY u.tid_name, u.sub_tid_name
 GROUPING SETS (
     (u.tid_name, u.sub_tid_name),

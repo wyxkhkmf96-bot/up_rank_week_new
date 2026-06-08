@@ -23,7 +23,7 @@ arch_info AS (
     FROM b_dim.dim_ctnt_arch_business_tag_info_d a
     LEFT JOIN premiere_avids b ON a.avid = b.avid
     WHERE a.log_date = b_current_datedelta('-1')
-      --and a.state = 0
+      and a.state = 0
       AND (a.is_charging_pay = 1 OR b.avid IS NOT NULL)
       AND a.up_id IN ({IN_CLAUSE})
       AND a.pubtime >= DATE_SUB(CURRENT_DATE, 30)
