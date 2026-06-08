@@ -208,9 +208,9 @@ WHERE DATEDIFF(date_sub(current_date, 1), b.first_charge_date) > 29
   AND (p.recent_30d_pub_cnt - p.prev_30d_pub_cnt) * 1.0 / p.prev_30d_pub_cnt
       < (c.gmv_30d - c.gmv_prev30d) / c.gmv_prev30d
   -- 稿件量基本持平：变化≤2篇 或 变化幅度≤20%
-  AND (
-      ABS(p.recent_30d_pub_cnt - p.prev_30d_pub_cnt) <= 2
-      OR ABS(p.recent_30d_pub_cnt - p.prev_30d_pub_cnt) * 1.0 / p.prev_30d_pub_cnt <= 0.20
-  )
+  --AND (
+  --    ABS(p.recent_30d_pub_cnt - p.prev_30d_pub_cnt) <= 2
+  --    OR ABS(p.recent_30d_pub_cnt - p.prev_30d_pub_cnt) * 1.0 / p.prev_30d_pub_cnt <= 0.20
+  --)
 
 ORDER BY `30天环比增速` DESC
