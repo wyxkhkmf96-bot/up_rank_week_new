@@ -1,96 +1,36 @@
-Pipeline started at 2026-06-08T16:04:23.370149
-[16:04:23] [INFO] ▶ 前置检查
-[16:04:23] [INFO] ✓ 从 ~/.workbuddy/adhoc-config.json 读取 ADHOC_TOKEN
-[16:04:23] [INFO] ✓ 所有必要文件存在
-[16:04:23] [INFO] ▶ 步骤1/7: 取主表（code1新星 + code6黑马）
-[16:04:23] [INFO]   命令: "C:\Users\dengyuting02\.workbuddy\binaries\python\versions\3.13.12\python.exe" run_all.py --phase 1
-[16:10:30] [OUTPUT]   [代码6-黑马UP榜] [280s] RUNNING
-[16:10:30] [OUTPUT]   [代码1-新星UP榜] [290s] RUNNING
-[16:10:30] [OUTPUT]   [代码6-黑马UP榜] [290s] RUNNING
-[16:10:30] [OUTPUT]   [代码1-新星UP榜] [300s] RUNNING
-[16:10:30] [OUTPUT]   [代码6-黑马UP榜] [300s] RUNNING
-[16:10:30] [OUTPUT]   [代码1-新星UP榜] [310s] RUNNING
-[16:10:30] [OUTPUT]   [代码6-黑马UP榜] [310s] RUNNING
-[16:10:30] [OUTPUT]   [代码1-新星UP榜] [320s] RUNNING
-[16:10:30] [OUTPUT]   [代码6-黑马UP榜] [320s] RUNNING
-[16:10:30] [OUTPUT]   [代码1-新星UP榜] [330s] RUNNING
-[16:10:30] [OUTPUT]   [代码6-黑马UP榜] [330s] RUNNING
-[16:10:30] [OUTPUT]   [代码1-新星UP榜] [340s] RUNNING
-[16:10:30] [OUTPUT]   [代码6-黑马UP榜] [340s] SUCCESS
-[16:10:30] [OUTPUT]   [代码6-黑马UP榜] DONE - 479 rows -> C:/Users/dengyuting02/WorkBuddy/20260514140206/result_code6_darkhorse.json
-[16:10:30] [OUTPUT]   [代码1-新星UP榜] [350s] SUCCESS
-[16:10:30] [OUTPUT]   [代码1-新星UP榜] DONE - 147 rows -> C:/Users/dengyuting02/WorkBuddy/20260514140206/result_code1_up_rank.json
-[16:10:30] [OUTPUT]   代码1完成，获得 147 个新星 up_id
-[16:10:30] [OUTPUT]   代码6完成，获得 479 个黑马 up_id
-[16:10:30] [OUTPUT]   阶段1元数据已保存 -> C:/Users/dengyuting02/WorkBuddy/20260514140206/.phase1_meta.json
-[16:10:30] [OUTPUT]   ============================================================
-[16:10:30] [OUTPUT]   阶段1数据校验:
-[16:10:30] [OUTPUT]   ✓ 新星UP: 147 个
-[16:10:30] [OUTPUT]   ✓ 黑马UP: 479 个
-[16:10:30] [OUTPUT]   ============================================================
-[16:10:30] [OUTPUT]   ============================================================
-[16:10:30] [OUTPUT]   阶段1完成!
-[16:10:30] [OUTPUT]   ============================================================
-[16:10:30] [INFO] ✓ 步骤1/7: 取主表（code1新星 + code6黑马） 完成
-[16:10:30] [INFO] ▶ 步骤2/7: 取明细（code2~5）
-[16:10:30] [INFO]   命令: "C:\Users\dengyuting02\.workbuddy\binaries\python\versions\3.13.12\python.exe" run_all.py --phase 2
-[16:13:48] [OUTPUT]   [代码3-稿件充电明细] [70s] SUCCESS
-[16:13:48] [OUTPUT]   [代码3-稿件充电明细] DONE - 5000 rows -> C:/Users/dengyuting02/WorkBuddy/20260514140206/result_code3_arch_charge.json
-[16:13:48] [OUTPUT]   [代码5-分区渗透率] [80s] RUNNING
-[16:13:48] [OUTPUT]   [代码2-日维度GMV_VV] [80s] RUNNING
-[16:13:48] [OUTPUT]   [代码5-分区渗透率] [90s] SUCCESS
-[16:13:48] [OUTPUT]   [代码5-分区渗透率] DONE - 1304 rows -> C:/Users/dengyuting02/WorkBuddy/20260514140206/result_code5_penetration.json
-[16:13:48] [OUTPUT]   [代码2-日维度GMV_VV] [90s] RUNNING
-[16:13:48] [OUTPUT]   [代码2-日维度GMV_VV] [100s] RUNNING
-[16:13:48] [OUTPUT]   [代码2-日维度GMV_VV] [110s] RUNNING
-[16:13:48] [OUTPUT]   [代码2-日维度GMV_VV] [120s] RUNNING
-[16:13:48] [OUTPUT]   [代码2-日维度GMV_VV] [130s] RUNNING
-[16:13:48] [OUTPUT]   [代码2-日维度GMV_VV] [140s] RUNNING
-[16:13:48] [OUTPUT]   [代码2-日维度GMV_VV] [150s] RUNNING
-[16:13:48] [OUTPUT]   [代码2-日维度GMV_VV] [160s] RUNNING
-[16:13:48] [OUTPUT]   [代码2-日维度GMV_VV] [170s] RUNNING
-[16:13:48] [OUTPUT]   [代码2-日维度GMV_VV] [180s] RUNNING
-[16:13:48] [OUTPUT]   [代码2-日维度GMV_VV] [190s] SUCCESS
-[16:13:48] [OUTPUT]   [代码2-日维度GMV_VV] DONE - 2761 rows -> C:/Users/dengyuting02/WorkBuddy/20260514140206/result_code2_daily_gmv_vv.json
-[16:13:48] [OUTPUT]   ============================================================
-[16:13:48] [OUTPUT]   阶段2数据校验:
-[16:13:48] [OUTPUT]   ✓ 日维度GMV_VV: 2761 行
-[16:13:48] [OUTPUT]   ✓ 稿件充电明细: 5000 行
-[16:13:48] [OUTPUT]   ✓ Top3共粉UP: 49 行
-[16:13:48] [OUTPUT]   ✓ 分区渗透率: 1304 行
-[16:13:48] [OUTPUT]   ============================================================
-[16:13:48] [OUTPUT]   ============================================================
-[16:13:48] [OUTPUT]   阶段2完成!
-[16:13:48] [OUTPUT]   ============================================================
-[16:13:48] [INFO] ✓ 步骤2/7: 取明细（code2~5） 完成
-[16:13:48] [INFO] ▶ 数据完整性检查
-[16:13:48] [INFO]   ✓ 新星UP主表: 147 行
-[16:13:48] [INFO]   ✓ 黑马UP主表: 479 行
-[16:13:48] [INFO]   ✓ 日维度GMV_VV: 2761 行
-[16:13:48] [INFO]   ✓ 稿件充电明细: 5000 行
-[16:13:48] [INFO]   ✓ Top3共粉UP: 49 行
-[16:13:48] [INFO]   ✓ 分区渗透率: 1304 行
-[16:13:48] [INFO]   黑马稿件覆盖率: 99% (473/479)
-[16:13:48] [WARN]   ⚠ 黑马UP有 6 个缺少稿件数据
-[16:13:48] [INFO] ▶ 步骤3/7: 周累计上榜次数
-[16:13:48] [INFO]   命令: "C:\Users\dengyuting02\.workbuddy\binaries\python\versions\3.13.12\python.exe" update_board_count.py
-[16:13:48] [OUTPUT]   计数粒度:    week
-[16:13:48] [OUTPUT]   本期 UP 数:  147
-[16:13:48] [OUTPUT]   当前周期:    2026-W24
-[16:13:48] [OUTPUT]   上一周期:    2026-W23
-[16:13:48] [OUTPUT]   上次更新到:  2026-W24
-[16:13:48] [OUTPUT]   ⚠ 本周期 (2026-W24) 已经累加过，本次只回填字段，不重复加。
-[16:13:48] [OUTPUT]   ✓ 已写入"上榜次数"到: C:\Users\dengyuting02\WorkBuddy\20260514140206\result_code1_up_rank.json
-[16:13:48] [INFO] ✓ 步骤3/7: 周累计上榜次数 完成
-[16:13:48] [INFO] ⏭ 跳过LLM API调用 (--skip-api)
-[16:13:48] [INFO] ⏭ 跳过热点主题 (--skip-api)
-[16:13:48] [INFO] ▶ 步骤6/7: 生成双Tab HTML
-[16:13:48] [INFO]   命令: "C:\Users\dengyuting02\.workbuddy\binaries\python\versions\3.13.12\python.exe" build_dashboard.py
-[16:13:52] [OUTPUT]   数据加载完成: UP=147, 趋势=147, UP稿件=615, 渗透分区=23, 黑马UP=479
-[16:13:52] [OUTPUT]   黑马UP稿件覆盖率: 473/479 (99%)
-[16:13:52] [OUTPUT]   ✅ HTML 已生成: C:\Users\dengyuting02\WorkBuddy\20260514140206\charging_up_dashboard.html
-[16:13:52] [OUTPUT]   文件大小: 1798 KB
-[16:13:52] [INFO] ✓ 步骤6/7: 生成双Tab HTML 完成
-[16:13:52] [INFO] ▶ 步骤7/7: Git提交并推送
-[16:13:52] [INFO] ▶ Git add
-[16:13:52] [INFO]   命令: git add -A
+Pipeline started at 2026-06-08T17:32:27.760766
+[17:32:27] [INFO] ▶ 前置检查
+[17:32:27] [INFO] ✓ 从 ~/.workbuddy/adhoc-config.json 读取 ADHOC_TOKEN
+[17:32:27] [INFO] ✓ 所有必要文件存在
+[17:32:27] [INFO] ▶ 步骤1/7: 取主表（code1新星 + code6黑马）
+[17:32:27] [INFO]   命令: "C:\Users\dengyuting02\.workbuddy\binaries\python\versions\3.13.12\python.exe" run_all.py --phase 1
+[17:32:54] [OUTPUT]   ============================================================
+[17:32:54] [OUTPUT]   阶段1: 并行执行代码1(新星UP榜) + 代码6(黑马UP榜)
+[17:32:54] [OUTPUT]   ============================================================
+[17:32:54] [OUTPUT]   [代码1-新星UP榜] Submitting (5160 chars)...
+[17:32:54] [OUTPUT]   [代码6-黑马UP榜] Submitting (7149 chars)...
+[17:32:54] [OUTPUT]   [代码6-黑马UP榜] Query ID: 109957269
+[17:32:54] [OUTPUT]   [代码6-黑马UP榜] [0s] RUNNING
+[17:32:54] [OUTPUT]   [代码1-新星UP榜] Query ID: 109957270
+[17:32:54] [OUTPUT]   [代码1-新星UP榜] [0s] RUNNING
+[17:32:54] [OUTPUT]   [代码6-黑马UP榜] [10s] RUNNING
+[17:32:54] [OUTPUT]   [代码1-新星UP榜] [10s] RUNNING
+[17:32:54] [OUTPUT]   [代码6-黑马UP榜] [20s] RUNNING
+[17:32:54] [OUTPUT]   [代码1-新星UP榜] [20s] RUNNING
+[17:32:54] [ERROR] ✗ 步骤1/7: 取主表（code1新星 + code6黑马） 失败 (exit=143)
+[17:32:54] [ERROR]   stderr: ============================================================
+阶段1: 并行执行代码1(新星UP榜) + 代码6(黑马UP榜)
+============================================================
+[代码1-新星UP榜] Submitting (5160 chars)...
+[代码6-黑马UP榜] Submitting (7149 chars)...
+[代码6-黑马UP榜] Query ID: 109957269
+[代码6-黑马UP榜] [0s] RUNNING
+[代码1-新星UP榜] Query ID: 109957270
+[代码1-新星UP榜] [0s] RUNNING
+[代码6-黑马UP榜] [10s] RUNNING
+[代码1-新星UP榜] [10s] RUNNING
+[代码6-黑马UP榜] [20s] RUNNING
+[代码1-新星UP榜] [20s] RUNNING
+[17:32:54] [ERROR] 
+✗ 流水线在步骤1失败，总耗时 27s
+[17:32:54] [ERROR]   详细日志: C:\Users\dengyuting02\WorkBuddy\20260514140206\pipeline.log

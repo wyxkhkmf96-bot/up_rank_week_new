@@ -190,7 +190,8 @@ def main():
     board_count_map = {str(r['up_id']): r.get('上榜次数', 1) for r in up_rows}
 
     # 判断每个 UP 是否需要重跑
-    # 策略：LLM 只对本周新上榜的UP做总结，连续在榜UP即使稿件变动也不跑
+    # 策略：只有「旧结果完全不存在」的全新UP才跑LLM；
+    #       其余一切情况（连续在榜、新上榜但已有旧结果、稿件变动、上次错误）全部复用。
     todo = []
     reuse = 0
     for uid in up_ids:
@@ -202,24 +203,8 @@ def main():
         if old is None:
             todo.append((uid, '新UP'))
             continue
-        old_summary = old.get('summary', '')
-        old_hash = old.get('input_hash', '')
 
-        # 连续在榜（上榜次数 > 1），不跑LLM，直接复用旧结果
-        board_count = board_count_map.get(uid, 1)
-        if board_count > 1:
-            reuse += 1
-            continue
-
-        if not old_hash:
-            todo.append((uid, '旧版无hash'))
-            continue
-        if old_hash != new_hash:
-            todo.append((uid, '稿件变动'))
-            continue
-        if old_summary.startswith('[API') or old_summary.startswith('[异常'):
-            todo.append((uid, '上次错误'))
-            continue
+        # 旧结果存在，无论什么状态都直接复用（不再因稿件变动/错误/上榜次数而重跑）
         reuse += 1
 
     print(f'\n复用 {reuse} 条（含连续在榜跳过），待重跑 {len(todo)} 条')
