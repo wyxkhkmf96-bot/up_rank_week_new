@@ -397,7 +397,6 @@ html_css_2 = """
   .tag-tid { background: #e8f4ff; color: #1890ff; }
   .tag-sub { background: #f0fff4; color: #52c41a; }
   .tag-new { background: var(--pink-light); color: var(--pink); font-weight: 700; }
-  .tag-continuous { background: #e6f7ff; color: #1890ff; font-weight: 700; }
   .tag-days { background: #fff7e6; color: #fa8c16; }
   .up-space-link { color: var(--pink); text-decoration: none; font-size: 11px; border: 1px solid var(--pink); border-radius: 12px; padding: 3px 10px; transition: all 0.2s; flex-shrink: 0; align-self: flex-start; white-space: nowrap; }
   .up-space-link:hover { background: var(--pink); color: white; }
