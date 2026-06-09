@@ -204,7 +204,12 @@ def main():
             todo.append((uid, '新UP'))
             continue
 
-        # 旧结果存在，无论什么状态都直接复用（不再因稿件变动/错误/上榜次数而重跑）
+        old_summary = old.get('summary', '')
+        if old_summary.startswith('[API') or old_summary.startswith('[异常'):
+            todo.append((uid, '上次错误'))
+            continue
+
+        # 旧结果存在且正常，直接复用
         reuse += 1
 
     print(f'\n复用 {reuse} 条（含连续在榜跳过），待重跑 {len(todo)} 条')
