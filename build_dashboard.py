@@ -235,6 +235,7 @@ try:
             'ecpvv': round(float(row['近30日ecpvv']), 2) if pd.notna(row['近30日ecpvv']) else 0,
             'charge_users': int(row['近30日充电人数']) if pd.notna(row['近30日充电人数']) else 0,
             'cvr': float(row['近30日cvr']) if pd.notna(row['近30日cvr']) else 0,
+            'on_board': int(row['上榜次数']) if '上榜次数' in row.index and pd.notna(row['上榜次数']) and str(row['上榜次数']).strip() not in ('', 'nan') else 1,
         })
     # 默认按 GMV 环比增速 降序
     darks_data.sort(key=lambda d: d['gmv_growth'], reverse=True)
@@ -539,6 +540,13 @@ html_body = f"""
   </div>
 
   <div class="filter-panel">
+    <div class="filter-row">
+      <span class="filter-label">🏷️ 上榜类型：</span>
+      <span class="filter-tag active" data-board="all" onclick="darkFilterByBoardType(this, 'all')">全部</span>
+      <span class="filter-tag" data-board="new" onclick="darkFilterByBoardType(this, 'new')">🆕 本期新上榜</span>
+      <span class="filter-tag" data-board="continuous" onclick="darkFilterByBoardType(this, 'continuous')">🔥 连续上榜</span>
+    </div>
+    <div class="filter-divider"></div>
     <div class="filter-row">
       <span class="filter-label">📂 分区筛选：</span>
       <span class="filter-tag active" data-tid="all" onclick="darkFilterByTid(this, 'all')">全部</span>
@@ -883,6 +891,7 @@ function weeklyRenderChart(up_id) {
 // Tab：黑马UP榜
 // ============================================================
 let darkSelTids = [];
+let darkBoardType = 'all';
 
 function darkInitFilterTags() {
   const wrap = document.getElementById('dark-filter-tags');
@@ -918,9 +927,18 @@ function darkFilterByTid(el, tid) {
   darkRenderBoard();
 }
 
+function darkFilterByBoardType(el, type) {
+  darkBoardType = type;
+  document.querySelectorAll('#tab-darkhorse .filter-tag[data-board]').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  darkRenderBoard();
+}
+
 function darkGetFiltered() {
   let r = DARKS;
   if (darkSelTids.length > 0) r = r.filter(d => darkSelTids.includes(d.tid_gen));
+  if (darkBoardType === 'new') r = r.filter(d => d.on_board === 1);
+  else if (darkBoardType === 'continuous') r = r.filter(d => d.on_board > 1);
   return r;
 }
 
@@ -929,7 +947,8 @@ function darkRenderBoard() {
   board.innerHTML = '';
   const filtered = darkGetFiltered();
   const lt = darkSelTids.length === 0 ? '全部分区' : darkSelTids.join('、');
-  document.getElementById('dark-board-count').textContent = `${lt} · 共 ${filtered.length} 位黑马UP`;
+  const lbMap = { 'all': '', 'new': ' · 本期新上榜', 'continuous': ' · 连续上榜' };
+  document.getElementById('dark-board-count').textContent = `${lt}${lbMap[darkBoardType]} · 共 ${filtered.length} 位黑马UP`;
   if (filtered.length === 0) {
     board.innerHTML = '<div class="no-results"><div class="icon">🔍</div>所选分区暂无黑马UP</div>';
     return;
@@ -961,6 +980,7 @@ function darkBuildUpCard(up, rank) {
         <div class="up-tags">
           <span class="tag-chip tag-tid">${up.tid_gen}</span>
           ${up.tid_sub ? '<span class="tag-chip tag-sub">' + up.tid_sub + '</span>' : ''}
+          ${up.on_board > 1 ? '<span class="tag-chip" style="background:#fff0f5;color:#e05a7a;font-weight:700">🔥 连续' + up.on_board + '周</span>' : '<span class="tag-chip tag-new">🆕 本周新上榜</span>'}
           <span class="tag-chip" style="background:#f5f5f5;color:#666">充电稿件 ${up.charge_video_cnt}部</span>
         </div>
       </div>

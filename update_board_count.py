@@ -1,13 +1,13 @@
 """维护 UP 主"上榜次数"（按周计数，以周一为周期起点）。
 
 使用方式：
-  python update_board_count.py            # 正常跑：累加本周计数
+  python update_board_count.py            # 正常跑：累加本周计数（新星+黑马）
   python update_board_count.py --reset    # 重置：当前榜单UP计数设为1，下周起重新累加
 
 放在 run_all.py 之后、build_dashboard.py 之前。
-读 result_code1_up_rank.json 的本期 UP 列表，
-更新 board_count.json 累加状态，
-再把"上榜次数"字段写入 result_code1_up_rank.json 让 dashboard 直接展示。
+读 result_code1_up_rank.json 和 result_code6_darkhorse.json 的本期 UP 列表，
+分别更新 board_count.json / board_count_dark.json 累加状态，
+再把"上榜次数"字段写入对应 JSON 让 dashboard 直接展示。
 
 规则（周粒度，周一为周期起点）：
 - 周期为 ISO 周（YYYY-Www），周一至周日同一周期
@@ -25,8 +25,6 @@ import sys
 from datetime import date, timedelta
 
 BASE = r'C:\Users\dengyuting02\WorkBuddy\20260514140206'
-UP_RANK_PATH = os.path.join(BASE, 'result_code1_up_rank.json')
-COUNT_PATH = os.path.join(BASE, 'board_count.json')
 
 GRANULARITY = 'week'   # 'day' | 'week'  ← 按周累计，以周一为周期起点
 RESET = '--reset' in sys.argv
@@ -48,114 +46,133 @@ def prev_period(p: str) -> str:
     return period_str(d - timedelta(days=1))
 
 
-def load_up_rank():
-    with open(UP_RANK_PATH, 'r', encoding='utf-8') as f:
+def load_json(path):
+    with open(path, 'r', encoding='utf-8') as f:
         return json.load(f)
 
 
-def save_up_rank(obj):
-    with open(UP_RANK_PATH, 'w', encoding='utf-8') as f:
+def save_json(path, obj):
+    with open(path, 'w', encoding='utf-8') as f:
         json.dump(obj, f, ensure_ascii=False, indent=2)
 
 
-def load_state():
-    if not os.path.exists(COUNT_PATH):
+def load_state(count_path):
+    if not os.path.exists(count_path):
         return {'_meta': {}, 'counts': {}}
-    with open(COUNT_PATH, 'r', encoding='utf-8') as f:
+    with open(count_path, 'r', encoding='utf-8') as f:
         return json.load(f)
 
 
-def save_state(state):
-    with open(COUNT_PATH, 'w', encoding='utf-8') as f:
+def save_state(count_path, state):
+    with open(count_path, 'w', encoding='utf-8') as f:
         json.dump(state, f, ensure_ascii=False, indent=2)
 
 
-# ---------- 主流程 ----------
-up_rank = load_up_rank()
-rows = up_rank['data']['result']
+def process_board(up_rank_path, count_path, board_name):
+    """处理单个榜单的上榜次数计数与回填。"""
+    if not os.path.exists(up_rank_path):
+        print(f'⚠ {board_name} 数据文件不存在，跳过: {up_rank_path}')
+        return
 
-if RESET:
+    up_rank = load_json(up_rank_path)
+    rows = up_rank['data']['result']
+
+    if RESET:
+        this_period = period_str(date.today())
+        new_counts = {}
+        for r in rows:
+            uid = str(r['up_id'])
+            new_counts[uid] = {'count': 1, 'last_period': this_period}
+            r['上榜次数'] = 1
+
+        state = {
+            'counts': new_counts,
+            '_meta': {
+                'granularity': GRANULARITY,
+                'last_update_period': this_period,
+                'updated_at': date.today().isoformat(),
+            }
+        }
+        save_state(count_path, state)
+        print(f'✓ [{board_name}] 累加状态已重置: 当前 {len(rows)} 个UP，计数全部设为1（{this_period}）')
+        save_json(up_rank_path, up_rank)
+        print(f'✓ [{board_name}] 已写入"上榜次数"到: {up_rank_path}')
+        return
+
+    state = load_state(count_path)
     this_period = period_str(date.today())
-    new_counts = {}
-    for r in rows:
-        uid = str(r['up_id'])
-        new_counts[uid] = {'count': 1, 'last_period': this_period}
-        r['上榜次数'] = 1
+    last_period = prev_period(this_period)
+    last_update_period = state['_meta'].get('last_update_period', '')
+    prev_granularity = state['_meta'].get('granularity', GRANULARITY)
 
-    state = {
-        'counts': new_counts,
-        '_meta': {
+    if prev_granularity != GRANULARITY:
+        print(f'⚠ [{board_name}] 检测到粒度切换 ({prev_granularity} → {GRANULARITY})')
+        print(f'  请先执行 python update_board_count.py --reset 再继续。')
+        return
+
+    print(f'\n=== {board_name} ===')
+    print(f'本期 UP 数:  {len(rows)}')
+    print(f'当前周期:    {this_period}')
+    print(f'上次更新到:  {last_update_period or "(首次运行)"}')
+
+    old_counts = state.get('counts', {})
+    this_uids = {str(r['up_id']) for r in rows}
+
+    if last_update_period == this_period:
+        # 同周期重跑：状态不动，只回填字段
+        print(f'⚠ 本周期 ({this_period}) 已经累加过，本次只回填字段，不重复加。')
+        for r in rows:
+            uid = str(r['up_id'])
+            entry = old_counts.get(uid)
+            r['上榜次数'] = entry['count'] if entry else 1
+    else:
+        # 新周期：累加 + 清理脱榜
+        new_counts = {}
+        new_up = 0
+        continued = 0
+
+        for r in rows:
+            uid = str(r['up_id'])
+            prev_entry = old_counts.get(uid)
+            if prev_entry and prev_entry.get('last_period') == last_period:
+                count = prev_entry['count'] + 1
+                continued += 1
+            else:
+                count = 1
+                new_up += 1
+            new_counts[uid] = {'count': count, 'last_period': this_period}
+            r['上榜次数'] = count
+
+        dropped = len(set(old_counts) - this_uids)
+
+        state['counts'] = new_counts
+        state['_meta'] = {
             'granularity': GRANULARITY,
             'last_update_period': this_period,
             'updated_at': date.today().isoformat(),
         }
-    }
-    save_state(state)
-    print(f'✓ 累加状态已重置: 当前 {len(rows)} 个UP，计数全部设为1（{this_period}）')
-    print(f'  下周开始，连续在榜的UP会在此基础上继续累加')
-    save_up_rank(up_rank)
-    sys.exit(0)
+        save_state(count_path, state)
+        print(f'✓ 累加状态已更新: {count_path}')
+        print(f'  新上榜（含脱榜重新入榜）: {new_up} 位')
+        print(f'  连续在榜（计数+1）:        {continued} 位')
+        print(f'  本期脱榜清理:              {dropped} 位')
+        print(f'  当前榜单累计跟踪:          {len(new_counts)} 位')
+
+    save_json(up_rank_path, up_rank)
+    print(f'✓ 已写入"上榜次数"到: {up_rank_path}')
 
 
-state = load_state()
-this_period = period_str(date.today())
-last_period = prev_period(this_period)
-last_update_period = state['_meta'].get('last_update_period', '')
-prev_granularity = state['_meta'].get('granularity', GRANULARITY)
+# ---------- 主流程：新星榜 + 黑马榜 ----------
+print(f'计数粒度: {GRANULARITY}')
 
-if prev_granularity != GRANULARITY:
-    print(f'⚠ 检测到粒度切换 ({prev_granularity} → {GRANULARITY})')
-    print(f'  请先执行 python update_board_count.py --reset 再继续。')
-    sys.exit(1)
+process_board(
+    os.path.join(BASE, 'result_code1_up_rank.json'),
+    os.path.join(BASE, 'board_count.json'),
+    '新星榜'
+)
 
-print(f'计数粒度:    {GRANULARITY}')
-print(f'本期 UP 数:  {len(rows)}')
-print(f'当前周期:    {this_period}')
-print(f'上一周期:    {last_period}')
-print(f'上次更新到:  {last_update_period or "(首次运行)"}')
-
-old_counts = state.get('counts', {})
-this_uids = {str(r['up_id']) for r in rows}
-
-if last_update_period == this_period:
-    # 同周期重跑：状态不动，只回填字段
-    print(f'\n⚠ 本周期 ({this_period}) 已经累加过，本次只回填字段，不重复加。')
-    for r in rows:
-        uid = str(r['up_id'])
-        entry = old_counts.get(uid)
-        r['上榜次数'] = entry['count'] if entry else 1
-else:
-    # 新周期：累加 + 清理脱榜
-    new_counts = {}
-    new_up = 0
-    continued = 0
-
-    for r in rows:
-        uid = str(r['up_id'])
-        prev_entry = old_counts.get(uid)
-        if prev_entry and prev_entry.get('last_period') == last_period:
-            count = prev_entry['count'] + 1
-            continued += 1
-        else:
-            count = 1
-            new_up += 1
-        new_counts[uid] = {'count': count, 'last_period': this_period}
-        r['上榜次数'] = count
-
-    dropped = len(set(old_counts) - this_uids)
-
-    state['counts'] = new_counts
-    state['_meta'] = {
-        'granularity': GRANULARITY,
-        'last_update_period': this_period,
-        'updated_at': date.today().isoformat(),
-    }
-    save_state(state)
-    print(f'\n✓ 累加状态已更新: {COUNT_PATH}')
-    print(f'  新上榜（含脱榜重新入榜）: {new_up} 位')
-    print(f'  连续在榜（计数+1）:        {continued} 位')
-    print(f'  本期脱榜清理:              {dropped} 位')
-    print(f'  当前榜单累计跟踪:          {len(new_counts)} 位')
-
-save_up_rank(up_rank)
-print(f'✓ 已写入"上榜次数"到: {UP_RANK_PATH}')
+process_board(
+    os.path.join(BASE, 'result_code6_darkhorse.json'),
+    os.path.join(BASE, 'board_count_dark.json'),
+    '黑马榜'
+)
