@@ -280,6 +280,7 @@ html_head = f"""<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>充电UP主分析看板</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   :root {{
     --pink: #FB7299;
@@ -742,22 +743,35 @@ function weeklyRenderBoard() {
 function weeklyDownloadCSV() {
   const filtered = weeklyGetFilteredUPS();
   if (!filtered.length) { alert('当前无数据可下载'); return; }
-  const BOM = '﻿';
-  const header = '排名,UP名,UID,粉丝数,一级分区,二级分区,近30日GMV,近30日VV,近30日ECPVV,近30日充电人次,近30日充电转化率,充电稿件数,首充发布时间,首充距今天数,上榜次数,空间链接,共粉UP,内容总结';
-  const rows = filtered.map((up, i) => [
-    i + 1,
-    '"' + up.uname.replace(/"/g, '""') + '"',
-    up.up_id, up.fans, up.tid_gen, up.tid_sub, up.gmv, up.vv, up.ecpvv || '', up.charge_users, fmtPct(up.cvr),
-    up.charge_video_cnt, up.first_charge_date, up.days_since, up.on_board, up.space_url,
-    '"' + (up.sim_ups || '').replace(/"/g, '""') + '"',
-    '"' + (up.summary || '').replace(/"/g, '""') + '"'
-  ].join(','));
-  const csv = BOM + header + '\n' + rows.join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
+  const upHeaders = ['排名','UP名','UID','粉丝数','一级分区','二级分区','近30日GMV','近30日VV','近30日ECPVV','近30日充电人次','近30日充电转化率','充电稿件数','首充发布时间','首充距今天数','上榜次数','空间链接','共粉UP','内容总结'];
+  const upRows = filtered.map((up, i) => [
+    i + 1, up.uname, up.up_id, up.fans, up.tid_gen, up.tid_sub,
+    up.gmv, up.vv, up.ecpvv || '', up.charge_users, fmtPct(up.cvr),
+    up.charge_video_cnt, up.first_charge_date, up.days_since, up.on_board,
+    up.space_url, up.sim_ups || '', up.summary || ''
+  ]);
+  const videoHeaders = ['排名','UP名','UID','稿件ID','稿件标题','稿件类型','发布时间','tag','稿件近30日GMV','稿件近30日播放量','稿件近30日ECPVV','稿件近30日充电人数','稿件近30日转化率','播放页'];
+  const videoRows = [];
+  filtered.forEach((up, upIdx) => {
+    const videos = VIDEOS[up.up_id] || [];
+    videos.forEach((v) => {
+      videoRows.push([
+        upIdx + 1, up.uname, up.up_id, v.avid, v.title, v.type,
+        v.pubtime, v.tag, v.gmv, v.vv, v.ecpvv || '', v.charge_users,
+        v.cvr, v.play_url
+      ]);
+    });
+  });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([upHeaders, ...upRows]), 'UP主信息');
+  if (videoRows.length) {
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([videoHeaders, ...videoRows]), '稿件明细');
+  }
+  const blob = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  const url = URL.createObjectURL(new Blob([blob], { type: 'application/octet-stream' }));
   const a = document.createElement('a');
   const lt = weeklySelTids.length === 0 ? '全部分区' : weeklySelTids.join('_');
-  a.href = url; a.download = `充电新星UP榜_${lt}.csv`; a.click();
+  a.href = url; a.download = `充电新星UP榜_${lt}.xlsx`; a.click();
   URL.revokeObjectURL(url);
 }
 
@@ -1016,21 +1030,35 @@ function darkToggleVideos(up_id) {
 function darkDownloadCSV() {
   const filtered = darkGetFiltered();
   if (!filtered.length) { alert('当前无数据可下载'); return; }
-  const BOM = '﻿';
-  const header = '排名,UP名,UID,粉丝数,一级分区,二级分区,充电稿件数,近30日GMV,前30日GMV,GMV增量,GMV环比增速,近30日ECPVV,近30日充电人次,近30日充电转化率,空间链接';
-  const rows = filtered.map((up, i) => [
-    i + 1,
-    '"' + up.uname.replace(/"/g, '""') + '"',
-    up.up_id, up.fans, up.tid_gen, up.tid_sub, up.charge_video_cnt,
-    up.gmv, up.gmv_prev, up.gmv_delta, darkFmtGrowth(up.gmv_growth),
-    up.ecpvv || '', up.charge_users, fmtPct(up.cvr), up.space_url
-  ].join(','));
-  const csv = BOM + header + '\n' + rows.join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
+  const upHeaders = ['排名','UP名','UID','粉丝数','一级分区','二级分区','充电稿件数','近30日GMV','前30日GMV','GMV增量','GMV环比增速','近30日ECPVV','近30日充电人次','近30日充电转化率','空间链接'];
+  const upRows = filtered.map((up, i) => [
+    i + 1, up.uname, up.up_id, up.fans, up.tid_gen, up.tid_sub,
+    up.charge_video_cnt, up.gmv, up.gmv_prev, up.gmv_delta,
+    darkFmtGrowth(up.gmv_growth), up.ecpvv || '', up.charge_users,
+    fmtPct(up.cvr), up.space_url
+  ]);
+  const videoHeaders = ['排名','UP名','UID','稿件ID','稿件标题','稿件类型','发布时间','tag','稿件近30日GMV','稿件近30日播放量','稿件近30日ECPVV','稿件近30日充电人数','稿件近30日转化率','播放页'];
+  const videoRows = [];
+  filtered.forEach((up, upIdx) => {
+    const videos = VIDEOS[up.up_id] || [];
+    videos.forEach((v) => {
+      videoRows.push([
+        upIdx + 1, up.uname, up.up_id, v.avid, v.title, v.type,
+        v.pubtime, v.tag, v.gmv, v.vv, v.ecpvv || '', v.charge_users,
+        v.cvr, v.play_url
+      ]);
+    });
+  });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([upHeaders, ...upRows]), 'UP主信息');
+  if (videoRows.length) {
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([videoHeaders, ...videoRows]), '稿件明细');
+  }
+  const blob = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  const url = URL.createObjectURL(new Blob([blob], { type: 'application/octet-stream' }));
   const a = document.createElement('a');
   const lt = darkSelTids.length === 0 ? '全部分区' : darkSelTids.join('_');
-  a.href = url; a.download = `黑马UP榜_${lt}.csv`; a.click();
+  a.href = url; a.download = `黑马UP榜_${lt}.xlsx`; a.click();
   URL.revokeObjectURL(url);
 }
 

@@ -90,7 +90,6 @@ charge_video_gmv AS (
 up_agg AS (
     SELECT
         a.up_id,
-        COUNT(DISTINCT CASE WHEN a.pubtime >= DATE_SUB(CURRENT_DATE, 30) THEN a.avid END) AS charge_video_cnt_30d,
         SUM(COALESCE(g.gmv_30d, 0))      AS gmv_30d,
         SUM(COALESCE(g.gmv_prev30d, 0))  AS gmv_prev30d,
         SUM(COALESCE(c.vv, 0))           AS vv_30d,
@@ -157,11 +156,9 @@ SELECT
         WHEN DATEDIFF(date_sub(current_date, 1), b.first_charge_date) <= 29 THEN '全新'
         ELSE '成长'
     END AS `榜单类型`,
-    -- 充电稿件数（近30天口径）
-    COALESCE(c.charge_video_cnt_30d, 0) AS `近30日充电稿件数`,
-    -- 充电发稿数（增量口径）
-    COALESCE(p.recent_30d_pub_cnt, 0) AS `近30日发稿数`,
-    COALESCE(p.prev_30d_pub_cnt, 0) AS `前30日发稿数`,
+    -- 充电稿件数/发稿数（近30天口径，同一字段）
+    COALESCE(p.recent_30d_pub_cnt, 0) AS `近30日充电稿件数`,
+    COALESCE(p.prev_30d_pub_cnt, 0) AS `前30日充电稿件数`,
     CASE
         WHEN COALESCE(p.prev_30d_pub_cnt, 0) = 0 THEN 0
         ELSE ROUND((COALESCE(p.recent_30d_pub_cnt, 0) * 1.0 / p.prev_30d_pub_cnt) - 1, 4)
