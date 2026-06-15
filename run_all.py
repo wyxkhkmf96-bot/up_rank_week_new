@@ -56,11 +56,20 @@ def submit_and_wait(label, sql, output_path, timeout=1800):
     query_id = resp['data']['queryId']
     print(f'[{label}] Query ID: {query_id}', file=sys.stderr)
     elapsed = 0
+    last_status = None
     names = {1: 'SUCCESS', 2: 'FAILED', 3: 'RUNNING', 4: 'QUEUED', 5: 'STOPPED'}
     while elapsed < timeout:
         status_resp = api_request(f"{CONFIG['baseUrl']}/api/adhoc/outer/v2/sql/status/{query_id}")
         status = status_resp.get('data')
-        print(f'[{label}] [{elapsed}s] {names.get(status, f"UNKNOWN({status})")}', file=sys.stderr)
+        status_name = names.get(status, f'UNKNOWN({status})')
+        # 状态变化时立即打印
+        if status != last_status:
+            print(f'[{label}] [{elapsed}s] {status_name}', file=sys.stderr)
+            last_status = status
+        else:
+            # 每60秒打印一次心跳，让用户知道还活着
+            if elapsed > 0 and elapsed % 60 == 0:
+                print(f'[{label}] 仍在查询中... 已等待 {elapsed//60} 分钟', file=sys.stderr)
         if status == 1:
             result = api_request(f"{CONFIG['baseUrl']}/api/adhoc/outer/v2/sql/result/{query_id}")
             with open(output_path, 'w', encoding='utf-8') as f:
