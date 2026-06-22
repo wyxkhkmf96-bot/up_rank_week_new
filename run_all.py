@@ -1,16 +1,19 @@
 """
-UP主充电榜单全流程查询脚本
+UP主充电榜单全流程查询脚本（全自动版）
+
 执行顺序：
-  阶段1 (并行): 代码1 (新星UP榜单主表) + 代码6 (黑马UP榜单主表) → 各产出 up_id 列表
+  阶段1 (并行): 代码1 (新星UP榜单主表) + 代码6 (黑马UP榜单主表)
   阶段2 (并行): 代码2~5
-    代码2/4 依赖代码1的 up_id（仅服务新星）
-    代码3 依赖 代码1 ∪ 代码6 的 up_id 并集（稿件明细同时供新星+黑马用）
-    代码5 不依赖
+  阶段3: 更新上榜次数
+  阶段4: LLM内容总结
+  阶段5: 热点主题
+  阶段6: HTML生成
 
 用法:
-  全流程:        PYTHONIOENCODING=utf-8 python run_all.py
-  仅阶段1:       PYTHONIOENCODING=utf-8 python run_all.py --phase 1
-  仅阶段2:       PYTHONIOENCODING=utf-8 python run_all.py --phase 2
+  全流程（默认）:  PYTHONIOENCODING=utf-8 python run_all.py --full
+  仅Adhoc查询:     PYTHONIOENCODING=utf-8 python run_all.py --phase 1
+  仅阶段2:         PYTHONIOENCODING=utf-8 python run_all.py --phase 2
+  仅后续处理:      PYTHONIOENCODING=utf-8 python run_all.py --post
 """
 import json
 import time
@@ -20,6 +23,9 @@ import sys
 import threading
 import os
 import argparse
+import subprocess
+import hashlib
+from datetime import datetime
 
 CONFIG = {
     'username': os.environ.get('ADHOC_USERNAME', 'dengyuting02'),
@@ -30,11 +36,13 @@ CONFIG = {
 if not CONFIG['token']:
     print('错误：未设置环境变量 ADHOC_TOKEN（adhoc 平台 token）', file=sys.stderr)
     print('Windows PowerShell 临时设置：$env:ADHOC_TOKEN="your_token"', file=sys.stderr)
-    print('Windows cmd 临时设置：       set ADHOC_TOKEN=your_token', file=sys.stderr)
     sys.exit(1)
 
 BASE_DIR = 'C:/Users/dengyuting02/WorkBuddy/20260514140206'
 
+# ============================================================
+# 通用工具
+# ============================================================
 def api_request(url, method='GET', data=None):
     headers = {
         'Adhoc-Username': CONFIG['username'],
@@ -46,15 +54,25 @@ def api_request(url, method='GET', data=None):
     with urllib.request.urlopen(req, timeout=60) as resp:
         return json.loads(resp.read().decode('utf-8'))
 
+def milestone(msg):
+    """打印大阶段里程碑"""
+    print('\n' + '=' * 60, file=sys.stderr)
+    print(f'  {msg}', file=sys.stderr)
+    print('=' * 60, file=sys.stderr)
+
+def step(msg):
+    """打印步骤信息"""
+    print(f'  → {msg}', file=sys.stderr)
+
 def submit_and_wait(label, sql, output_path, timeout=1800):
-    print(f'[{label}] Submitting ({len(sql)} chars)...', file=sys.stderr)
+    print(f'  → [{label}] 提交查询 ({len(sql)} chars)...', file=sys.stderr)
     resp = api_request(f"{CONFIG['baseUrl']}/api/adhoc/outer/v2/sql/execute",
                        method='POST', data={'sqlCommand': sql, 'engineType': 19})
     if resp.get('code') != 200:
-        print(f'[{label}] Submit FAILED: {json.dumps(resp, ensure_ascii=False)}', file=sys.stderr)
+        print(f'  ✗ [{label}] 提交失败: {json.dumps(resp, ensure_ascii=False)}', file=sys.stderr)
         return None
     query_id = resp['data']['queryId']
-    print(f'[{label}] Query ID: {query_id}', file=sys.stderr)
+    print(f'  → [{label}] Query ID: {query_id}', file=sys.stderr)
     elapsed = 0
     last_status = None
     names = {1: 'SUCCESS', 2: 'FAILED', 3: 'RUNNING', 4: 'QUEUED', 5: 'STOPPED'}
@@ -62,83 +80,64 @@ def submit_and_wait(label, sql, output_path, timeout=1800):
         status_resp = api_request(f"{CONFIG['baseUrl']}/api/adhoc/outer/v2/sql/status/{query_id}")
         status = status_resp.get('data')
         status_name = names.get(status, f'UNKNOWN({status})')
-        # 状态变化时立即打印
         if status != last_status:
-            print(f'[{label}] [{elapsed}s] {status_name}', file=sys.stderr)
+            print(f'  → [{label}] [{elapsed}s] {status_name}', file=sys.stderr)
             last_status = status
         else:
-            # 每60秒打印一次心跳，让用户知道还活着
             if elapsed > 0 and elapsed % 60 == 0:
-                print(f'[{label}] 仍在查询中... 已等待 {elapsed//60} 分钟', file=sys.stderr)
+                print(f'  → [{label}] 仍在查询中... 已等待 {elapsed//60} 分钟', file=sys.stderr)
         if status == 1:
             result = api_request(f"{CONFIG['baseUrl']}/api/adhoc/outer/v2/sql/result/{query_id}")
             with open(output_path, 'w', encoding='utf-8') as f:
                 json.dump(result, f, ensure_ascii=False, indent=2)
             rows = len(result.get('data', {}).get('result', []))
-            print(f'[{label}] DONE - {rows} rows -> {output_path}', file=sys.stderr)
+            print(f'  ✓ [{label}] 完成 - {rows} 行 -> {output_path}', file=sys.stderr)
             return result
         if status == 2:
-            print(f'[{label}] FAILED', file=sys.stderr)
+            print(f'  ✗ [{label}] 查询失败', file=sys.stderr)
             return None
         if status == 5:
-            print(f'[{label}] STOPPED (平台终止)', file=sys.stderr)
+            print(f'  ✗ [{label}] 平台终止', file=sys.stderr)
             return None
         time.sleep(10)
         elapsed += 10
-    print(f'[{label}] TIMEOUT after {timeout}s', file=sys.stderr)
+    print(f'  ✗ [{label}] 超时 ({timeout}s)', file=sys.stderr)
     return None
 
 # ============================================================
-# 代码1: 新星UP主榜单主表
+# 代码1~6 SQL 构建与执行
 # ============================================================
 def run_code1():
-    sql_path = f'{BASE_DIR}/code1_up_rank.sql'
-    with open(sql_path, 'r', encoding='utf-8') as f:
+    with open(f'{BASE_DIR}/code1_up_rank.sql', 'r', encoding='utf-8') as f:
         sql = f.read().strip()
     return submit_and_wait('代码1-新星UP榜', sql, f'{BASE_DIR}/result_code1_up_rank.json')
 
-# ============================================================
-# 代码6: 黑马UP主榜单主表（与代码1并行，互不依赖）
-# ============================================================
 def run_code6():
-    sql_path = f'{BASE_DIR}/code6_darkhorse.sql'
-    with open(sql_path, 'r', encoding='utf-8') as f:
+    with open(f'{BASE_DIR}/code6_darkhorse.sql', 'r', encoding='utf-8') as f:
         sql = f.read().strip()
     return submit_and_wait('代码6-黑马UP榜', sql, f'{BASE_DIR}/result_code6_darkhorse.json')
 
-# ============================================================
-# 代码2: 近30天UP主日维度充电GMV + VV (依赖代码1 up_id)
-# ============================================================
 def build_code2_sql(in_clause):
-    sql_path = f'{BASE_DIR}/code2_daily_gmv_vv.sql'
-    with open(sql_path, 'r', encoding='utf-8') as f:
+    with open(f'{BASE_DIR}/code2_daily_gmv_vv.sql', 'r', encoding='utf-8') as f:
         sql = f.read().strip()
     return sql.replace('{IN_CLAUSE}', in_clause)
 
-# ============================================================
-# 代码3: 稿件充电明细 (依赖代码1 up_id)
-# ============================================================
 def build_code3_sql(in_clause):
-    sql_path = f'{BASE_DIR}/code3_arch_charge.sql'
-    with open(sql_path, 'r', encoding='utf-8') as f:
+    with open(f'{BASE_DIR}/code3_arch_charge.sql', 'r', encoding='utf-8') as f:
         sql = f.read().strip()
     return sql.replace('{IN_CLAUSE}', in_clause)
 
-# 代码4: Top3共粉UP (依赖代码1 up_id)
 def build_code4_sql(in_clause):
-    sql_path = f'{BASE_DIR}/code4_top3_fans.sql'
-    with open(sql_path, 'r', encoding='utf-8') as f:
+    with open(f'{BASE_DIR}/code4_top3_fans.sql', 'r', encoding='utf-8') as f:
         sql = f.read().strip()
     return sql.replace('{IN_CLAUSE}', in_clause)
 
-# 代码5: 分区充电渗透率 (不依赖up_id)
 def build_code5_sql():
-    sql_path = f'{BASE_DIR}/code5_penetration.sql'
-    with open(sql_path, 'r', encoding='utf-8') as f:
+    with open(f'{BASE_DIR}/code5_penetration.sql', 'r', encoding='utf-8') as f:
         return f.read().strip()
 
 # ============================================================
-# 中间结果文件（阶段1→阶段2 的 up_id 传递）
+# 阶段1: 并行执行代码1 + 代码6
 # ============================================================
 PHASE1_META = f'{BASE_DIR}/.phase1_meta.json'
 
@@ -146,86 +145,61 @@ def save_phase1_meta(up_ids_new, up_ids_dark):
     meta = {'up_ids_new': up_ids_new, 'up_ids_dark': up_ids_dark}
     with open(PHASE1_META, 'w', encoding='utf-8') as f:
         json.dump(meta, f, ensure_ascii=False)
-    print(f'阶段1元数据已保存 -> {PHASE1_META}', file=sys.stderr)
+    print(f'  → 阶段1元数据已保存', file=sys.stderr)
 
 def load_phase1_meta():
     if not os.path.exists(PHASE1_META):
-        print(f'错误：找不到阶段1元数据文件 {PHASE1_META}，请先运行 --phase 1', file=sys.stderr)
+        print(f'  ✗ 找不到阶段1元数据文件', file=sys.stderr)
         sys.exit(1)
     with open(PHASE1_META, 'r', encoding='utf-8') as f:
         return json.load(f)
 
-# ============================================================
-# 阶段1: 并行执行代码1(新星UP榜) + 代码6(黑马UP榜)
-# ============================================================
 def run_phase1():
-    print('=' * 60, file=sys.stderr)
-    print('阶段1: 并行执行代码1(新星UP榜) + 代码6(黑马UP榜)', file=sys.stderr)
-    print('=' * 60, file=sys.stderr)
+    milestone('阶段1: 并行查询新星榜 + 黑马榜')
 
     results = {}
     def _run_and_store(key, fn):
         results[key] = fn()
 
-    s1_threads = [
+    threads = [
         threading.Thread(target=_run_and_store, args=('code1', run_code1)),
         threading.Thread(target=_run_and_store, args=('code6', run_code6)),
     ]
-    for t in s1_threads:
+    for t in threads:
         t.start()
-    for t in s1_threads:
+    for t in threads:
         t.join()
 
     result1 = results.get('code1')
     result6 = results.get('code6')
+
     if not result1:
-        print('代码1失败，终止执行', file=sys.stderr)
+        print('  ✗ 代码1失败，终止执行', file=sys.stderr)
         sys.exit(1)
 
     up_ids_new = [str(r['up_id']) for r in result1['data']['result']]
-    print(f'\n代码1完成，获得 {len(up_ids_new)} 个新星 up_id', file=sys.stderr)
+    print(f'  ✓ 新星榜: {len(up_ids_new)} 个UP', file=sys.stderr)
 
+    up_ids_dark = []
     if result6:
         up_ids_dark = [str(r['up_id']) for r in result6['data']['result']]
-        print(f'代码6完成，获得 {len(up_ids_dark)} 个黑马 up_id', file=sys.stderr)
+        print(f'  ✓ 黑马榜: {len(up_ids_dark)} 个UP', file=sys.stderr)
     else:
-        up_ids_dark = []
-        print('代码6失败/无结果，黑马 up_id 为空（不影响后续）', file=sys.stderr)
+        print('  ⚠ 黑马榜无结果', file=sys.stderr)
 
     save_phase1_meta(up_ids_new, up_ids_dark)
-
-    # 阶段1数据校验
-    print('\n' + '=' * 60, file=sys.stderr)
-    print('阶段1数据校验:', file=sys.stderr)
-    if len(up_ids_new) == 0:
-        print('ERROR: 新星UP数量为0，检查code1 SQL和数据源', file=sys.stderr)
-        sys.exit(1)
-    print(f'  ✓ 新星UP: {len(up_ids_new)} 个', file=sys.stderr)
-    print(f'  ✓ 黑马UP: {len(up_ids_dark)} 个', file=sys.stderr)
-    print('=' * 60, file=sys.stderr)
-
-    print('\n' + '=' * 60, file=sys.stderr)
-    print('阶段1完成!', file=sys.stderr)
-    print('=' * 60, file=sys.stderr)
+    return up_ids_new, up_ids_dark
 
 # ============================================================
 # 阶段2: 并行执行代码2~5
 # ============================================================
-def run_phase2():
-    meta = load_phase1_meta()
-    up_ids_new = meta['up_ids_new']
-    up_ids_dark = meta.get('up_ids_dark', [])
-    in_clause_new = ', '.join(up_ids_new)
-    print(f'从元数据加载：新星 {len(up_ids_new)} 个，黑马 {len(up_ids_dark)} 个', file=sys.stderr)
+def run_phase2(up_ids_new, up_ids_dark):
+    milestone('阶段2: 并行查询明细数据 (code2~5)')
 
-    # 代码3 稿件明细用 新星 ∪ 黑马 的并集
+    in_clause_new = ', '.join(up_ids_new)
     up_ids_all = list(dict.fromkeys(up_ids_new + up_ids_dark))
     in_clause_all = ', '.join(up_ids_all)
-    print(f'代码3 稿件明细将覆盖并集 {len(up_ids_all)} 个 up_id', file=sys.stderr)
-
-    print('\n' + '=' * 60, file=sys.stderr)
-    print('阶段2: 并行执行代码2~5', file=sys.stderr)
-    print('=' * 60, file=sys.stderr)
+    print(f'  → 新星UP: {len(up_ids_new)} 个, 并集UP: {len(up_ids_all)} 个', file=sys.stderr)
 
     tasks = [
         ('代码2-日维度GMV_VV', build_code2_sql(in_clause_new), f'{BASE_DIR}/result_code2_daily_gmv_vv.json'),
@@ -243,10 +217,8 @@ def run_phase2():
     for t in threads:
         t.join()
 
-    # 阶段2数据校验
-    print('\n' + '=' * 60, file=sys.stderr)
-    print('阶段2数据校验:', file=sys.stderr)
-    import os
+    # 数据校验
+    print('  → 阶段2数据校验:', file=sys.stderr)
     for code, path, desc in [
         ('code2', f'{BASE_DIR}/result_code2_daily_gmv_vv.json', '日维度GMV_VV'),
         ('code3', f'{BASE_DIR}/result_code3_arch_charge.json', '稿件充电明细'),
@@ -254,42 +226,258 @@ def run_phase2():
         ('code5', f'{BASE_DIR}/result_code5_penetration.json', '分区渗透率'),
     ]:
         if not os.path.exists(path):
-            print(f'  ✗ {desc}: 文件不存在', file=sys.stderr)
+            print(f'    ✗ {desc}: 文件不存在', file=sys.stderr)
             continue
         with open(path, 'r', encoding='utf-8') as f:
             d = json.load(f)
         rows = d.get('data', {}).get('result', [])
-        row_count = len(rows)
-        if row_count == 0:
-            print(f'  ✗ {desc}: 0行，数据异常', file=sys.stderr)
-        else:
-            print(f'  ✓ {desc}: {row_count} 行', file=sys.stderr)
-    print('=' * 60, file=sys.stderr)
+        print(f'    ✓ {desc}: {len(rows)} 行', file=sys.stderr)
 
-    print('\n' + '=' * 60, file=sys.stderr)
-    print('阶段2完成!', file=sys.stderr)
-    print('=' * 60, file=sys.stderr)
+# ============================================================
+# 阶段3: 更新上榜次数
+# ============================================================
+def run_phase3():
+    milestone('阶段3: 更新上榜次数')
+    result = subprocess.run(
+        [sys.executable, f'{BASE_DIR}/update_board_count.py'],
+        capture_output=True, text=True, encoding='utf-8'
+    )
+    if result.stdout:
+        for line in result.stdout.strip().split('\n'):
+            print(f'  {line}', file=sys.stderr)
+    if result.returncode != 0:
+        print(f'  ✗ 上榜次数更新失败', file=sys.stderr)
+        if result.stderr:
+            print(f'  {result.stderr}', file=sys.stderr)
+
+# ============================================================
+# 阶段4: LLM内容总结（带进度监控）
+# ============================================================
+def run_phase4():
+    milestone('阶段4: LLM内容总结（增量更新）')
+
+    # 启动子进程运行 run_api.py
+    proc = subprocess.Popen(
+        [sys.executable, f'{BASE_DIR}/run_api.py'],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        text=True, encoding='utf-8', bufsize=1
+    )
+
+    # 同时监控 api_run.log 的进度
+    log_path = f'{BASE_DIR}/api_run.log'
+    last_line_count = 0
+    last_progress_print = 0
+    start_time = time.time()
+
+    # 等待子进程完成，同时定期打印进度
+    while proc.poll() is None:
+        # 每5秒检查一次日志
+        if os.path.exists(log_path):
+            try:
+                with open(log_path, 'r', encoding='utf-8') as f:
+                    lines = f.readlines()
+                current_count = len(lines)
+                if current_count != last_line_count:
+                    # 打印新增加的日志行
+                    for line in lines[last_line_count:current_count]:
+                        line = line.rstrip()
+                        if line.strip():
+                            print(f'  {line}', file=sys.stderr)
+                    last_line_count = current_count
+            except Exception:
+                pass
+
+        # 每30秒打印一次心跳
+        elapsed = time.time() - start_time
+        if elapsed - last_progress_print >= 30:
+            print(f'  → LLM仍在运行中... 已等待 {int(elapsed)} 秒', file=sys.stderr)
+            last_progress_print = elapsed
+
+        time.sleep(2)
+
+    # 子进程结束，打印剩余日志
+    if os.path.exists(log_path):
+        try:
+            with open(log_path, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+            for line in lines[last_line_count:]:
+                line = line.rstrip()
+                if line.strip():
+                    print(f'  {line}', file=sys.stderr)
+        except Exception:
+            pass
+
+    # 打印子进程最终输出
+    stdout, stderr = proc.communicate()
+    if stdout:
+        for line in stdout.strip().split('\n'):
+            if line.strip():
+                print(f'  {line}', file=sys.stderr)
+
+    if proc.returncode != 0:
+        print(f'  ✗ LLM内容总结失败', file=sys.stderr)
+        if stderr:
+            print(f'  {stderr}', file=sys.stderr)
+    else:
+        print('  ✓ LLM内容总结完成', file=sys.stderr)
+
+# ============================================================
+# 阶段5: 热点主题
+# ============================================================
+def run_phase5():
+    milestone('阶段5: 生成热点主题')
+    result = subprocess.run(
+        [sys.executable, f'{BASE_DIR}/gen_hot_topics.py'],
+        capture_output=True, text=True, encoding='utf-8'
+    )
+    if result.stdout:
+        for line in result.stdout.strip().split('\n'):
+            print(f'  {line}', file=sys.stderr)
+    if result.returncode != 0:
+        print(f'  ✗ 热点主题生成失败', file=sys.stderr)
+        if result.stderr:
+            print(f'  {stderr}', file=sys.stderr)
+    else:
+        print('  ✓ 热点主题生成完成', file=sys.stderr)
+
+# ============================================================
+# 阶段6: HTML生成
+# ============================================================
+def run_phase6():
+    milestone('阶段6: 生成HTML看板')
+    result = subprocess.run(
+        [sys.executable, f'{BASE_DIR}/build_dashboard.py'],
+        capture_output=True, text=True, encoding='utf-8'
+    )
+    if result.stdout:
+        for line in result.stdout.strip().split('\n'):
+            print(f'  {line}', file=sys.stderr)
+    if result.returncode != 0:
+        print(f'  ✗ HTML生成失败', file=sys.stderr)
+        if result.stderr:
+            print(f'  {stderr}', file=sys.stderr)
+    else:
+        print('  ✓ HTML看板生成完成', file=sys.stderr)
+
+# ============================================================
+# 阶段7: Git推送
+# ============================================================
+def run_phase7():
+    milestone('阶段7: Git推送')
+    
+    # 获取当前ISO周编号
+    today = datetime.now()
+    iso_year, iso_week, _ = today.isocalendar()
+    week_str = f'{iso_year}-W{iso_week:02d}'
+    
+    # git add
+    result_add = subprocess.run(
+        ['git', 'add', '-A'],
+        cwd=BASE_DIR,
+        capture_output=True, text=True, encoding='utf-8'
+    )
+    if result_add.returncode != 0:
+        print(f'  ✗ git add 失败', file=sys.stderr)
+        return
+    
+    # 检查是否有变更需要提交
+    result_status = subprocess.run(
+        ['git', 'status', '--porcelain'],
+        cwd=BASE_DIR,
+        capture_output=True, text=True, encoding='utf-8'
+    )
+    if not result_status.stdout.strip():
+        print(f'  → 无文件变更，跳过Git推送', file=sys.stderr)
+        return
+    
+    # git commit
+    commit_msg = f'feat: 更新{week_str}周榜数据'
+    result_commit = subprocess.run(
+        ['git', 'commit', '-m', commit_msg],
+        cwd=BASE_DIR,
+        capture_output=True, text=True, encoding='utf-8'
+    )
+    if result_commit.returncode != 0:
+        print(f'  ✗ git commit 失败', file=sys.stderr)
+        if result_commit.stderr:
+            print(f'  {result_commit.stderr}', file=sys.stderr)
+        return
+    
+    # git push
+    result_push = subprocess.run(
+        ['git', 'push', 'origin', 'main'],
+        cwd=BASE_DIR,
+        capture_output=True, text=True, encoding='utf-8'
+    )
+    if result_push.returncode != 0:
+        print(f'  ✗ git push 失败', file=sys.stderr)
+        if result_push.stderr:
+            print(f'  {result_push.stderr}', file=sys.stderr)
+        return
+    
+    print(f'  ✓ Git推送完成: {commit_msg}', file=sys.stderr)
 
 # ============================================================
 # 主入口
 # ============================================================
 def main():
-    parser = argparse.ArgumentParser(description='UP主充电榜单全流程查询')
+    parser = argparse.ArgumentParser(description='UP主充电榜单全自动流水线')
     parser.add_argument('--phase', type=int, choices=[1, 2], default=None,
-                        help='仅运行指定阶段: 1=取主表, 2=取明细(依赖阶段1结果)')
+                        help='仅运行指定Adhoc阶段')
+    parser.add_argument('--full', action='store_true',
+                        help='全流程模式：Adhoc查询 + 后续处理（上榜次数/LLM/热点/HTML）')
+    parser.add_argument('--post', action='store_true',
+                        help='仅运行后续处理（上榜次数/LLM/热点/HTML），跳过Adhoc查询')
     args = parser.parse_args()
 
     if args.phase == 1:
         run_phase1()
     elif args.phase == 2:
-        run_phase2()
+        meta = load_phase1_meta()
+        run_phase2(meta['up_ids_new'], meta.get('up_ids_dark', []))
+    elif args.post:
+        # 仅后续处理
+        meta = load_phase1_meta()
+        run_phase3()
+        run_phase4()
+        run_phase5()
+        run_phase6()
+    elif args.full:
+        # 全流程模式
+        milestone('开始执行充电UP主榜单全流程')
+        print(f'  时间: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', file=sys.stderr)
+        print(f'  目录: {BASE_DIR}', file=sys.stderr)
+        print('', file=sys.stderr)
+
+        # 阶段1: Adhoc主表查询
+        up_ids_new, up_ids_dark = run_phase1()
+
+        # 阶段2: Adhoc明细查询
+        run_phase2(up_ids_new, up_ids_dark)
+
+        # 阶段3: 更新上榜次数
+        run_phase3()
+
+        # 阶段4: LLM内容总结
+        run_phase4()
+
+        # 阶段5: 热点主题
+        run_phase5()
+
+        # 阶段6: HTML生成
+        run_phase6()
+
+        # 阶段7: Git推送
+        run_phase7()
+
+        milestone('全部完成!')
+        print(f'  HTML文件: {BASE_DIR}/charging_up_dashboard.html', file=sys.stderr)
+        print(f'  完成时间: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', file=sys.stderr)
     else:
-        # 默认：两阶段顺序执行（全流程）
-        run_phase1()
-        run_phase2()
-        print('\n' + '=' * 60, file=sys.stderr)
-        print('全部完成!', file=sys.stderr)
-        print('=' * 60, file=sys.stderr)
+        # 默认：仅Adhoc查询（兼容旧模式）
+        up_ids_new, up_ids_dark = run_phase1()
+        run_phase2(up_ids_new, up_ids_dark)
+        milestone('Adhoc查询全部完成!')
 
 if __name__ == '__main__':
     main()
