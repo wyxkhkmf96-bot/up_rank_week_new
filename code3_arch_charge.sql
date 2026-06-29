@@ -35,6 +35,7 @@ charge_revenue AS (
         COUNT(DISTINCT mid) AS charge_users
     FROM bili_ogv.dwb_trd_main_chrg_order_p24h_ascrb_i_d
     WHERE log_date BETWEEN b_current_datedelta('-30') AND b_current_datedelta('-1')
+    and avid in (select DISTINCT avid from arch_info)
     GROUP BY 1
 ),
 play_stats AS (
@@ -44,6 +45,7 @@ play_stats AS (
         SUM(play_buvid_uv) AS total_play_uv
     FROM b_dwb.dwb_ctnt_arch_play_avid_vv_vt_i_d
     WHERE log_date BETWEEN b_current_datedelta('-30') AND b_current_datedelta('-1')
+    and avid in (select DISTINCT avid from arch_info)
     GROUP BY 1
 ),
 asr_content AS (
@@ -52,7 +54,7 @@ asr_content AS (
         MIN(asr_data) AS asr_data
     FROM ai.llm_asr_filter_full
     WHERE log_date = b_current_datedelta('-1')
-      AND aid IN (SELECT avid FROM arch_info)
+      AND aid IN (SELECT distinct avid FROM arch_info)
     GROUP BY 1
 )
 SELECT
@@ -85,5 +87,5 @@ FROM (
     LEFT JOIN asr_content d ON a.avid = d.avid
     WHERE b.total_gmv > 0
 ) t
-WHERE rn <= 5
+WHERE rn <= 5  --只保留top5稿件
 ORDER BY `稿件近30日GMV` DESC

@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "statuses": [
+    {
+      "id": "backlog",
+      "label": "待办",
+      "category": "open",
+      "isFixed": false,
+      "isDefault": true,
+      "order": 0
+    },
+    {
+      "id": "todo",
+      "label": "进行中",
+      "category": "open",
+      "isFixed": true,
+      "isDefault": false,
+      "order": 1
+    },
+    {
+      "id": "needs-review",
+      "label": "待审核",
+      "category": "open",
+      "isFixed": false,
+      "isDefault": true,
+      "order": 2
+    },
+    {
+      "id": "done",
+      "label": "已完成",
+      "category": "closed",
+      "isFixed": true,
+      "isDefault": false,
+      "order": 3
+    },
+    {
+      "id": "cancelled",
+      "label": "已取消",
+      "category": "closed",
+      "isFixed": true,
+      "isDefault": false,
+      "order": 4
+    }
+  ],
+  "defaultStatusId": "todo"
+}

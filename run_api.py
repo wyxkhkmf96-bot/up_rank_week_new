@@ -205,8 +205,8 @@ def main():
             continue
 
         old_summary = old.get('summary', '')
-        if old_summary.startswith('[API') or old_summary.startswith('[异常'):
-            todo.append((uid, '上次错误'))
+        if old_summary.startswith('[API') or old_summary.startswith('[异常') or old_summary.startswith('[超时'):
+            todo.append((uid, '上次错误/超时'))
             continue
 
         # 旧结果存在且正常，直接复用

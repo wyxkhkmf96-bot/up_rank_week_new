@@ -1,0 +1,158 @@
+[2026-06-15 14:08:19.383] [engine] started — workspace=a135558a-80cc-6c3b-a2c5-c1281797ba7d, user=dengyuting02
+[2026-06-15 14:08:30.031] [poll] start — user=dengyuting02, cycle=0
+[2026-06-15 14:08:30.031] [inbox] HEAD bxk-desktop/share-docs/users/dengyuting02/inbox.json
+[2026-06-15 14:08:30.059] [inbox] etag changed null → a180ff9f5a5693843386140600ea8218
+[2026-06-15 14:08:30.165] [inbox] syncing: 装扮业务hive表 from zhuxu (51f1c8acd1f8a44d)
+[2026-06-15 14:08:30.270] [inbox] sync failed: 装扮业务hive表 (51f1c8acd1f8a44d)
+[2026-06-15 14:08:30.281] [inbox] syncing: 流量增长团队 from tobias (57332baedc015af1)
+[2026-06-15 14:08:30.389] [inbox] sync failed: 流量增长团队 (57332baedc015af1)
+[2026-06-15 14:08:30.391] [manifests] no KBs registered, skip
+[2026-06-15 14:08:30.392] [poll] done
+[2026-06-15 14:08:40.525] [poll] start — user=dengyuting02, cycle=1
+[2026-06-15 14:08:40.525] [inbox] HEAD bxk-desktop/share-docs/users/dengyuting02/inbox.json
+[2026-06-15 14:08:40.589] [inbox] syncing: 装扮业务hive表 from zhuxu (51f1c8acd1f8a44d)
+[2026-06-15 14:08:40.750] [inbox] sync failed: 装扮业务hive表 (51f1c8acd1f8a44d)
+[2026-06-15 14:08:40.770] [inbox] syncing: 流量增长团队 from tobias (57332baedc015af1)
+[2026-06-15 14:08:40.907] [inbox] sync failed: 流量增长团队 (57332baedc015af1)
+[2026-06-15 14:08:40.907] [manifests] no KBs registered, skip
+[2026-06-15 14:08:40.909] [poll] done
+[2026-06-15 14:08:56.098] [poll] start — user=dengyuting02, cycle=2
+[2026-06-15 14:08:56.098] [inbox] HEAD bxk-desktop/share-docs/users/dengyuting02/inbox.json
+[2026-06-15 14:08:56.152] [inbox] syncing: 装扮业务hive表 from zhuxu (51f1c8acd1f8a44d)
+[2026-06-15 14:08:56.217] [inbox] sync failed: 装扮业务hive表 (51f1c8acd1f8a44d)
+[2026-06-15 14:08:56.258] [inbox] syncing: 流量增长团队 from tobias (57332baedc015af1)
+[2026-06-15 14:08:56.357] [inbox] sync failed: 流量增长团队 (57332baedc015af1)
+[2026-06-15 14:08:56.357] [manifests] no KBs registered, skip
+[2026-06-15 14:08:56.361] [poll] done
+[2026-06-15 14:09:13.902] [poll] start — user=dengyuting02, cycle=3
+[2026-06-15 14:09:13.902] [inbox] HEAD bxk-desktop/share-docs/users/dengyuting02/inbox.json
+[2026-06-15 14:09:13.992] [inbox] syncing: 装扮业务hive表 from zhuxu (51f1c8acd1f8a44d)
+[2026-06-15 14:09:14.156] [inbox] sync failed: 装扮业务hive表 (51f1c8acd1f8a44d)
+[2026-06-15 14:09:14.178] [inbox] syncing: 流量增长团队 from tobias (57332baedc015af1)
+[2026-06-15 14:09:14.323] [inbox] sync failed: 流量增长团队 (57332baedc015af1)
+[2026-06-15 14:09:14.324] [manifests] no KBs registered, skip
+[2026-06-15 14:09:14.328] [poll] done
+[2026-06-15 14:09:32.327] [poll] start — user=dengyuting02, cycle=4
+[2026-06-15 14:09:32.327] [inbox] HEAD bxk-desktop/share-docs/users/dengyuting02/inbox.json
+[2026-06-15 14:09:32.426] [inbox] syncing: 装扮业务hive表 from zhuxu (51f1c8acd1f8a44d)
+[2026-06-15 14:09:32.543] [inbox] sync failed: 装扮业务hive表 (51f1c8acd1f8a44d)
+[2026-06-15 14:09:32.635] [inbox] syncing: 流量增长团队 from tobias (57332baedc015af1)
+[2026-06-15 14:09:32.780] [inbox] sync failed: 流量增长团队 (57332baedc015af1)
+[2026-06-15 14:09:32.780] [manifests] no KBs registered, skip
+[2026-06-15 14:09:32.782] [poll] done
+[2026-06-15 14:09:44.713] [poll] start — user=dengyuting02, cycle=5
+[2026-06-15 14:09:44.713] [inbox] HEAD bxk-desktop/share-docs/users/dengyuting02/inbox.json
+[2026-06-15 14:09:44.756] [inbox] syncing: 装扮业务hive表 from zhuxu (51f1c8acd1f8a44d)
+[2026-06-15 14:09:44.829] [inbox] sync failed: 装扮业务hive表 (51f1c8acd1f8a44d)
+[2026-06-15 14:09:44.849] [inbox] syncing: 流量增长团队 from tobias (57332baedc015af1)
+[2026-06-15 14:09:44.956] [inbox] sync failed: 流量增长团队 (57332baedc015af1)
+[2026-06-15 14:09:44.957] [manifests] no KBs registered, skip
+[2026-06-15 14:09:44.961] [poll] done
+[2026-06-15 14:10:04.811] [poll] start — user=dengyuting02, cycle=6
+[2026-06-15 14:10:04.811] [inbox] HEAD bxk-desktop/share-docs/users/dengyuting02/inbox.json
+[2026-06-15 14:10:04.865] [inbox] syncing: 装扮业务hive表 from zhuxu (51f1c8acd1f8a44d)
+[2026-06-15 14:10:05.027] [inbox] sync failed: 装扮业务hive表 (51f1c8acd1f8a44d)
+[2026-06-15 14:10:05.062] [inbox] syncing: 流量增长团队 from tobias (57332baedc015af1)
+[2026-06-15 14:10:05.182] [inbox] sync failed: 流量增长团队 (57332baedc015af1)
+[2026-06-15 14:10:05.183] [manifests] no KBs registered, skip
+[2026-06-15 14:10:05.191] [poll] done
+[2026-06-15 14:10:15.996] [poll] start — user=dengyuting02, cycle=7
+[2026-06-15 14:10:15.996] [inbox] HEAD bxk-desktop/share-docs/users/dengyuting02/inbox.json
+[2026-06-15 14:10:16.065] [inbox] syncing: 装扮业务hive表 from zhuxu (51f1c8acd1f8a44d)
+[2026-06-15 14:10:16.320] [inbox] sync failed: 装扮业务hive表 (51f1c8acd1f8a44d)
+[2026-06-15 14:10:16.365] [inbox] syncing: 流量增长团队 from tobias (57332baedc015af1)
+[2026-06-15 14:10:16.485] [inbox] sync failed: 流量增长团队 (57332baedc015af1)
+[2026-06-15 14:10:16.485] [manifests] no KBs registered, skip
+[2026-06-15 14:10:16.491] [poll] done
+[2026-06-15 14:10:34.178] [poll] start — user=dengyuting02, cycle=8
+[2026-06-15 14:10:34.178] [inbox] HEAD bxk-desktop/share-docs/users/dengyuting02/inbox.json
+[2026-06-15 14:10:34.224] [inbox] syncing: 装扮业务hive表 from zhuxu (51f1c8acd1f8a44d)
+[2026-06-15 14:10:34.305] [inbox] sync failed: 装扮业务hive表 (51f1c8acd1f8a44d)
+[2026-06-15 14:10:34.322] [inbox] syncing: 流量增长团队 from tobias (57332baedc015af1)
+[2026-06-15 14:10:34.486] [inbox] sync failed: 流量增长团队 (57332baedc015af1)
+[2026-06-15 14:10:34.487] [manifests] no KBs registered, skip
+[2026-06-15 14:10:34.489] [poll] done
+[2026-06-15 14:10:47.064] [poll] start — user=dengyuting02, cycle=9
+[2026-06-15 14:10:47.064] [inbox] HEAD bxk-desktop/share-docs/users/dengyuting02/inbox.json
+[2026-06-15 14:10:47.111] [inbox] syncing: 装扮业务hive表 from zhuxu (51f1c8acd1f8a44d)
+[2026-06-15 14:10:47.287] [inbox] sync failed: 装扮业务hive表 (51f1c8acd1f8a44d)
+[2026-06-15 14:10:47.314] [inbox] syncing: 流量增长团队 from tobias (57332baedc015af1)
+[2026-06-15 14:10:47.491] [inbox] sync failed: 流量增长团队 (57332baedc015af1)
+[2026-06-15 14:10:47.493] [manifests] no KBs registered, skip
+[2026-06-15 14:10:47.493] [poll] done
+[2026-06-15 14:11:00.698] [poll] start — user=dengyuting02, cycle=10
+[2026-06-15 14:11:00.698] [inbox] HEAD bxk-desktop/share-docs/users/dengyuting02/inbox.json
+[2026-06-15 14:11:00.815] [inbox] syncing: 装扮业务hive表 from zhuxu (51f1c8acd1f8a44d)
+[2026-06-15 14:11:00.888] [inbox] sync failed: 装扮业务hive表 (51f1c8acd1f8a44d)
+[2026-06-15 14:11:00.904] [inbox] syncing: 流量增长团队 from tobias (57332baedc015af1)
+[2026-06-15 14:11:01.025] [inbox] sync failed: 流量增长团队 (57332baedc015af1)
+[2026-06-15 14:11:01.025] [manifests] no KBs registered, skip
+[2026-06-15 14:11:01.027] [poll] done
+[2026-06-15 14:11:15.666] [poll] start — user=dengyuting02, cycle=11
+[2026-06-15 14:11:15.666] [inbox] HEAD bxk-desktop/share-docs/users/dengyuting02/inbox.json
+[2026-06-15 14:11:15.702] [inbox] syncing: 装扮业务hive表 from zhuxu (51f1c8acd1f8a44d)
+[2026-06-15 14:11:15.776] [inbox] sync failed: 装扮业务hive表 (51f1c8acd1f8a44d)
+[2026-06-15 14:11:15.790] [inbox] syncing: 流量增长团队 from tobias (57332baedc015af1)
+[2026-06-15 14:11:15.856] [inbox] sync failed: 流量增长团队 (57332baedc015af1)
+[2026-06-15 14:11:15.856] [manifests] no KBs registered, skip
+[2026-06-15 14:11:15.860] [poll] done
+[2026-06-15 14:11:33.479] [poll] start — user=dengyuting02, cycle=12
+[2026-06-15 14:11:33.480] [inbox] HEAD bxk-desktop/share-docs/users/dengyuting02/inbox.json
+[2026-06-15 14:11:33.512] [inbox] syncing: 装扮业务hive表 from zhuxu (51f1c8acd1f8a44d)
+[2026-06-15 14:11:33.576] [inbox] sync failed: 装扮业务hive表 (51f1c8acd1f8a44d)
+[2026-06-15 14:11:33.594] [inbox] syncing: 流量增长团队 from tobias (57332baedc015af1)
+[2026-06-15 14:11:33.688] [inbox] sync failed: 流量增长团队 (57332baedc015af1)
+[2026-06-15 14:11:33.690] [manifests] no KBs registered, skip
+[2026-06-15 14:11:33.690] [poll] done
+[2026-06-15 14:11:45.346] [poll] start — user=dengyuting02, cycle=13
+[2026-06-15 14:11:45.346] [inbox] HEAD bxk-desktop/share-docs/users/dengyuting02/inbox.json
+[2026-06-15 14:11:45.374] [inbox] syncing: 装扮业务hive表 from zhuxu (51f1c8acd1f8a44d)
+[2026-06-15 14:11:45.457] [inbox] sync failed: 装扮业务hive表 (51f1c8acd1f8a44d)
+[2026-06-15 14:11:45.471] [inbox] syncing: 流量增长团队 from tobias (57332baedc015af1)
+[2026-06-15 14:11:45.548] [inbox] sync failed: 流量增长团队 (57332baedc015af1)
+[2026-06-15 14:11:45.548] [manifests] no KBs registered, skip
+[2026-06-15 14:11:45.551] [poll] done
+[2026-06-15 14:12:05.007] [poll] start — user=dengyuting02, cycle=14
+[2026-06-15 14:12:05.007] [inbox] HEAD bxk-desktop/share-docs/users/dengyuting02/inbox.json
+[2026-06-15 14:12:05.063] [inbox] syncing: 装扮业务hive表 from zhuxu (51f1c8acd1f8a44d)
+[2026-06-15 14:12:05.240] [inbox] sync failed: 装扮业务hive表 (51f1c8acd1f8a44d)
+[2026-06-15 14:12:05.272] [inbox] syncing: 流量增长团队 from tobias (57332baedc015af1)
+[2026-06-15 14:12:05.423] [inbox] sync failed: 流量增长团队 (57332baedc015af1)
+[2026-06-15 14:12:05.431] [manifests] no KBs registered, skip
+[2026-06-15 14:12:05.454] [poll] done
+[2026-06-15 14:12:17.463] [engine] stopped — workspace=a135558a-80cc-6c3b-a2c5-c1281797ba7d
+[2026-06-15 14:12:25.088] [engine] started — workspace=a135558a-80cc-6c3b-a2c5-c1281797ba7d, user=dengyuting02
+[2026-06-15 14:12:43.605] [poll] start — user=dengyuting02, cycle=0
+[2026-06-15 14:12:43.605] [inbox] HEAD bxk-desktop/share-docs/users/dengyuting02/inbox.json
+[2026-06-15 14:12:43.665] [inbox] etag changed null → a180ff9f5a5693843386140600ea8218
+[2026-06-15 14:12:43.807] [inbox] syncing: 装扮业务hive表 from zhuxu (51f1c8acd1f8a44d)
+[2026-06-15 14:12:44.014] [inbox] sync failed: 装扮业务hive表 (51f1c8acd1f8a44d)
+[2026-06-15 14:12:44.042] [inbox] syncing: 流量增长团队 from tobias (57332baedc015af1)
+[2026-06-15 14:12:44.155] [inbox] sync failed: 流量增长团队 (57332baedc015af1)
+[2026-06-15 14:12:44.156] [manifests] no KBs registered, skip
+[2026-06-15 14:12:44.157] [poll] done
+[2026-06-15 14:12:54.699] [poll] start — user=dengyuting02, cycle=1
+[2026-06-15 14:12:54.699] [inbox] HEAD bxk-desktop/share-docs/users/dengyuting02/inbox.json
+[2026-06-15 14:12:54.745] [inbox] syncing: 装扮业务hive表 from zhuxu (51f1c8acd1f8a44d)
+[2026-06-15 14:12:54.835] [inbox] sync failed: 装扮业务hive表 (51f1c8acd1f8a44d)
+[2026-06-15 14:12:54.861] [inbox] syncing: 流量增长团队 from tobias (57332baedc015af1)
+[2026-06-15 14:12:54.968] [inbox] sync failed: 流量增长团队 (57332baedc015af1)
+[2026-06-15 14:12:54.968] [manifests] no KBs registered, skip
+[2026-06-15 14:12:54.972] [poll] done
+[2026-06-15 14:13:07.684] [poll] start — user=dengyuting02, cycle=2
+[2026-06-15 14:13:07.684] [inbox] HEAD bxk-desktop/share-docs/users/dengyuting02/inbox.json
+[2026-06-15 14:13:07.839] [inbox] syncing: 装扮业务hive表 from zhuxu (51f1c8acd1f8a44d)
+[2026-06-15 14:13:07.949] [inbox] sync failed: 装扮业务hive表 (51f1c8acd1f8a44d)
+[2026-06-15 14:13:07.974] [inbox] syncing: 流量增长团队 from tobias (57332baedc015af1)
+[2026-06-15 14:13:08.115] [inbox] sync failed: 流量增长团队 (57332baedc015af1)
+[2026-06-15 14:13:08.120] [manifests] no KBs registered, skip
+[2026-06-15 14:13:08.143] [poll] done
+[2026-06-15 14:13:25.532] [poll] start — user=dengyuting02, cycle=3
+[2026-06-15 14:13:25.532] [inbox] HEAD bxk-desktop/share-docs/users/dengyuting02/inbox.json
+[2026-06-15 14:13:25.570] [inbox] syncing: 装扮业务hive表 from zhuxu (51f1c8acd1f8a44d)
+[2026-06-15 14:13:25.646] [inbox] sync failed: 装扮业务hive表 (51f1c8acd1f8a44d)
+[2026-06-15 14:13:25.662] [inbox] syncing: 流量增长团队 from tobias (57332baedc015af1)
+[2026-06-15 14:13:25.734] [inbox] sync failed: 流量增长团队 (57332baedc015af1)
+[2026-06-15 14:13:25.734] [manifests] no KBs registered, skip
+[2026-06-15 14:13:25.742] [poll] done
+[2026-06-15 14:13:38.517] [engine] stopped — workspace=a135558a-80cc-6c3b-a2c5-c1281797ba7d
