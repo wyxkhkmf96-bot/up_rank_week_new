@@ -72,6 +72,8 @@ PROMPT_BASE = '''你是B站内容分析师。请根据以下该UP主的视频数
 ## 示例输出
 ①古装家庭伦理剧情向剪辑，聚焦传统家族中长辈对晚辈的教育训诫场景；②着重呈现父子（舅甥）之间因违规行为引发的严厉管教过程'''
 
+VIDEO_CLASS_JSON = os.path.join(BASE, 'video_classifications.json')
+
 
 def compute_up_hash(up_name, videos):
     """对 UP 的输入数据计算指纹（稿件按 avid 排序后拼接关键字段）"""
@@ -248,7 +250,7 @@ def main():
         time.sleep(0.4)
 
     save(new_summaries)
-    print(f'\n完成！共{len(new_summaries)}个UP（重跑{len(todo)}，错误{error_count}），JSON已保存: {JSON_OUT}')
+    print(f'\n完成内容总结！共{len(new_summaries)}个UP（重跑{len(todo)}，错误{error_count}），JSON已保存: {JSON_OUT}')
 
 
 if __name__ == '__main__':

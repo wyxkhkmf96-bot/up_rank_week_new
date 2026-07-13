@@ -16,6 +16,7 @@
   Tab1：UPS / TRENDS / VIDEOS / PENE_L1 / UP_TIDS / weeklyXxx() / fmtNum/fmtMoney/fmtPct/fmtDt
 共享 CSS 变量（仅长名）：--pink/--border/--card/--shadow/...
 """
+import os
 import pandas as pd
 import json
 import re
@@ -137,6 +138,8 @@ for up_id, grp in df_video.groupby('UP主ID'):
             'cvr': float(r['稿件近30日转化率']) if pd.notna(r['稿件近30日转化率']) else 0,
         })
     videos_by_up[str(up_id)] = arr
+
+# 将分类结果 merge 到 videos_by_up
 
 pene_l1 = {}
 for _, r in df_pene.iterrows():
@@ -444,6 +447,63 @@ html_css_2 = """
   .no-results { text-align: center; padding: 60px 20px; color: var(--text-light); font-size: 14px; }
   .no-results .icon { font-size: 40px; margin-bottom: 12px; }
 
+  /* ===== Search Bar ===== */
+  .search-bar {
+    margin-bottom: 20px;
+  }
+  .search-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: var(--card);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 14px;
+    transition: all 0.2s;
+  }
+  .search-input-wrap:hover, .search-input-wrap:focus-within {
+    border-color: var(--pink);
+    box-shadow: 0 2px 8px rgba(251,114,153,0.15);
+  }
+  .search-input-wrap svg {
+    width: 18px; height: 18px;
+    color: var(--text-light);
+    margin-right: 10px;
+    flex-shrink: 0;
+  }
+  .search-input-wrap input {
+    border: none;
+    background: transparent;
+    outline: none;
+    flex: 1;
+    font-size: 14px;
+    color: var(--text);
+    min-width: 0;
+  }
+  .search-input-wrap input::placeholder {
+    color: var(--text-light);
+  }
+  .search-input-wrap .search-clear {
+    display: none;
+    margin-left: 8px;
+    padding: 2px 6px;
+    border-radius: 6px;
+    background: var(--pink-light);
+    color: var(--pink);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    white-space: nowrap;
+  }
+  .search-input-wrap .search-clear.visible {
+    display: inline-block;
+  }
+  .search-input-wrap .search-clear:hover {
+    background: var(--pink);
+    color: white;
+  }
+
   @media (max-width: 900px) {
     .up-metrics { grid-template-columns: repeat(3, 1fr); }
     .up-metrics.cols-6 { grid-template-columns: repeat(3, 1fr); }
@@ -475,6 +535,14 @@ html_body = f"""
 <!-- ============ Tab1: 充电新星UP主 ============ -->
 <div id="tab-weekly" class="page-content active">
 <div class="main">
+
+  <div class="search-bar">
+    <div class="search-input-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="weekly-search-input" placeholder="🔍 搜索 UP名 或 UID..." oninput="weeklySearch(this.value)" />
+      <button class="search-clear" id="weekly-search-clear" onclick="weeklySearchClear()">清除</button>
+    </div>
+  </div>
 
   <div class="board-note">
     <span class="board-note-title">📋 榜单说明</span>
@@ -529,6 +597,14 @@ html_body = f"""
 <!-- ============ Tab: 黑马UP ============ -->
 <div id="tab-darkhorse" class="page-content">
 <div class="main">
+
+  <div class="search-bar">
+    <div class="search-input-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="dark-search-input" placeholder="🔍 搜索 UP名 或 UID..." oninput="darkSearch(this.value)" />
+      <button class="search-clear" id="dark-search-clear" onclick="darkSearchClear()">清除</button>
+    </div>
+  </div>
 
   <div class="board-note">
     <span class="board-note-title">📋 榜单说明</span>
@@ -601,6 +677,7 @@ function switchTab(name) {
 // ============================================================
 let weeklySelTids = [];
 let weeklyBoardType = 'all';
+let weeklySearchKeyword = '';
 const weeklyChartInstances = {};
 
 function fmtNum(n) {
@@ -673,6 +750,22 @@ function weeklyFilterByBoardType(el, type) {
   weeklyRenderBoard();
 }
 
+function weeklySearch(val) {
+  weeklySearchKeyword = val.trim().toLowerCase();
+  const clearBtn = document.getElementById('weekly-search-clear');
+  if (clearBtn) clearBtn.classList.toggle('visible', weeklySearchKeyword.length > 0);
+  weeklyRenderBoard();
+}
+
+function weeklySearchClear() {
+  const input = document.getElementById('weekly-search-input');
+  if (input) input.value = '';
+  weeklySearchKeyword = '';
+  const clearBtn = document.getElementById('weekly-search-clear');
+  if (clearBtn) clearBtn.classList.remove('visible');
+  weeklyRenderBoard();
+}
+
 function weeklyRenderPene() {
   const wrap = document.getElementById('pene-info');
   wrap.innerHTML = '';
@@ -719,6 +812,13 @@ function weeklyGetFilteredUPS() {
   if (weeklySelTids.length > 0) r = r.filter(u => weeklySelTids.includes(u.tid_gen));
   if (weeklyBoardType === 'new') r = r.filter(u => u.on_board === 1);
   else if (weeklyBoardType === 'continuous') r = r.filter(u => u.on_board > 1);
+  if (weeklySearchKeyword) {
+    const kw = weeklySearchKeyword;
+    r = r.filter(u =>
+      u.uname.toLowerCase().includes(kw) ||
+      u.up_id.toString().includes(kw)
+    );
+  }
   return r;
 }
 
@@ -907,6 +1007,7 @@ function weeklyRenderChart(up_id) {
 // ============================================================
 let darkSelTids = [];
 let darkBoardType = 'all';
+let darkSearchKeyword = '';
 
 function darkInitFilterTags() {
   const wrap = document.getElementById('dark-filter-tags');
@@ -949,11 +1050,34 @@ function darkFilterByBoardType(el, type) {
   darkRenderBoard();
 }
 
+function darkSearch(val) {
+  darkSearchKeyword = val.trim().toLowerCase();
+  const clearBtn = document.getElementById('dark-search-clear');
+  if (clearBtn) clearBtn.classList.toggle('visible', darkSearchKeyword.length > 0);
+  darkRenderBoard();
+}
+
+function darkSearchClear() {
+  const input = document.getElementById('dark-search-input');
+  if (input) input.value = '';
+  darkSearchKeyword = '';
+  const clearBtn = document.getElementById('dark-search-clear');
+  if (clearBtn) clearBtn.classList.remove('visible');
+  darkRenderBoard();
+}
+
 function darkGetFiltered() {
   let r = DARKS;
   if (darkSelTids.length > 0) r = r.filter(d => darkSelTids.includes(d.tid_gen));
   if (darkBoardType === 'new') r = r.filter(d => d.on_board === 1);
   else if (darkBoardType === 'continuous') r = r.filter(d => d.on_board > 1);
+  if (darkSearchKeyword) {
+    const kw = darkSearchKeyword;
+    r = r.filter(d =>
+      d.uname.toLowerCase().includes(kw) ||
+      d.up_id.toString().includes(kw)
+    );
+  }
   return r;
 }
 

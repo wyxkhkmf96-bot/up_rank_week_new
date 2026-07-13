@@ -39,6 +39,37 @@ if not CONFIG['token']:
     sys.exit(1)
 
 BASE_DIR = 'C:/Users/dengyuting02/WorkBuddy/20260514140206'
+PROGRESS_FILE = f'{BASE_DIR}/.progress.json'
+
+# ============================================================
+# 进度文件写入
+# ============================================================
+def write_progress(phase, phase_name, status='running', progress=None, message=None, extra=None):
+    """写入进度文件，供外部随时查询当前状态"""
+    data = {
+        'status': status,
+        'phase': phase,
+        'phase_name': phase_name,
+        'progress': progress,
+        'message': message or f'{phase_name} 进行中',
+        'started_at': datetime.now().isoformat(timespec='seconds'),
+        'last_update': datetime.now().isoformat(timespec='seconds'),
+    }
+    if extra:
+        data.update(extra)
+    try:
+        with open(PROGRESS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+def clear_progress():
+    """清理进度文件"""
+    try:
+        if os.path.exists(PROGRESS_FILE):
+            os.remove(PROGRESS_FILE)
+    except Exception:
+        pass
 
 # ============================================================
 # 通用工具
@@ -64,7 +95,7 @@ def step(msg):
     """打印步骤信息"""
     print(f'  → {msg}', file=sys.stderr)
 
-def submit_and_wait(label, sql, output_path, timeout=1800):
+def submit_and_wait(label, sql, output_path, timeout=1800, phase_info=None):
     print(f'  → [{label}] 提交查询 ({len(sql)} chars)...', file=sys.stderr)
     resp = api_request(f"{CONFIG['baseUrl']}/api/adhoc/outer/v2/sql/execute",
                        method='POST', data={'sqlCommand': sql, 'engineType': 19})
@@ -86,6 +117,15 @@ def submit_and_wait(label, sql, output_path, timeout=1800):
         else:
             if elapsed > 0 and elapsed % 60 == 0:
                 print(f'  → [{label}] 仍在查询中... 已等待 {elapsed//60} 分钟', file=sys.stderr)
+                # 每60秒更新进度
+                if phase_info:
+                    write_progress(
+                        phase_info.get('phase', 1),
+                        phase_info.get('phase_name', 'Adhoc查询'),
+                        progress=phase_info.get('progress'),
+                        message=f"{label} {status_name} 中，已等待 {elapsed//60} 分钟，Query ID: {query_id}",
+                        extra=phase_info.get('extra', {})
+                    )
         if status == 1:
             result = api_request(f"{CONFIG['baseUrl']}/api/adhoc/outer/v2/sql/result/{query_id}")
             with open(output_path, 'w', encoding='utf-8') as f:
@@ -156,6 +196,7 @@ def load_phase1_meta():
 
 def run_phase1():
     milestone('阶段1: 并行查询新星榜 + 黑马榜')
+    write_progress(1, '阶段1 Adhoc查询', progress='0/2', message='并行查询code1(新星榜)+code6(黑马榜)')
 
     results = {}
     def _run_and_store(key, fn):
@@ -175,6 +216,7 @@ def run_phase1():
 
     if not result1:
         print('  ✗ 代码1失败，终止执行', file=sys.stderr)
+        write_progress(1, '阶段1 Adhoc查询', status='error', message='代码1(新星榜)查询失败，终止执行')
         sys.exit(1)
 
     up_ids_new = [str(r['up_id']) for r in result1['data']['result']]
@@ -188,6 +230,7 @@ def run_phase1():
         print('  ⚠ 黑马榜无结果', file=sys.stderr)
 
     save_phase1_meta(up_ids_new, up_ids_dark)
+    write_progress(1, '阶段1 Adhoc查询', progress='2/2', message=f'code1({len(up_ids_new)}个UP)+code6({len(up_ids_dark)}个UP)完成')
     return up_ids_new, up_ids_dark
 
 # ============================================================
@@ -195,6 +238,7 @@ def run_phase1():
 # ============================================================
 def run_phase2(up_ids_new, up_ids_dark):
     milestone('阶段2: 并行查询明细数据 (code2~5)')
+    write_progress(2, '阶段2 Adhoc查询', progress='0/4', message='并行查询code2~5(日维度GMV/VV/稿件/共粉/渗透率)')
 
     in_clause_new = ', '.join(up_ids_new)
     up_ids_all = list(dict.fromkeys(up_ids_new + up_ids_dark))
@@ -219,6 +263,7 @@ def run_phase2(up_ids_new, up_ids_dark):
 
     # 数据校验
     print('  → 阶段2数据校验:', file=sys.stderr)
+    completed = 0
     for code, path, desc in [
         ('code2', f'{BASE_DIR}/result_code2_daily_gmv_vv.json', '日维度GMV_VV'),
         ('code3', f'{BASE_DIR}/result_code3_arch_charge.json', '稿件充电明细'),
@@ -232,12 +277,16 @@ def run_phase2(up_ids_new, up_ids_dark):
             d = json.load(f)
         rows = d.get('data', {}).get('result', [])
         print(f'    ✓ {desc}: {len(rows)} 行', file=sys.stderr)
+        completed += 1
+    
+    write_progress(2, '阶段2 Adhoc查询', progress=f'{completed}/4', message=f'code2~5完成{completed}/4个查询')
 
 # ============================================================
 # 阶段3: 更新上榜次数
 # ============================================================
 def run_phase3():
     milestone('阶段3: 更新上榜次数')
+    write_progress(3, '阶段3 更新上榜次数', progress='0/1', message='运行update_board_count.py')
     result = subprocess.run(
         [sys.executable, f'{BASE_DIR}/update_board_count.py'],
         capture_output=True, text=True, encoding='utf-8'
@@ -249,12 +298,27 @@ def run_phase3():
         print(f'  ✗ 上榜次数更新失败', file=sys.stderr)
         if result.stderr:
             print(f'  {result.stderr}', file=sys.stderr)
+    else:
+        print('  ✓ 上榜次数更新完成', file=sys.stderr)
+    write_progress(3, '阶段3 更新上榜次数', progress='1/1', message='上榜次数更新完成')
 
 # ============================================================
 # 阶段4: LLM内容总结（带进度监控）
 # ============================================================
+import re
+
+def parse_llm_progress(lines):
+    """从 api_run.log 中解析 LLM 进度"""
+    # 查找 "[N/M]" 格式的进度
+    for line in reversed(lines):
+        m = re.search(r'\[(\d+)/(\d+)\]', line)
+        if m:
+            return int(m.group(1)), int(m.group(2))
+    return 0, 0
+
 def run_phase4():
     milestone('阶段4: LLM内容总结（增量更新）')
+    write_progress(4, '阶段4 LLM内容总结', progress='0/0', message='启动run_api.py，分析待重跑UP数量')
 
     # 启动子进程运行 run_api.py
     proc = subprocess.Popen(
@@ -284,6 +348,15 @@ def run_phase4():
                         if line.strip():
                             print(f'  {line}', file=sys.stderr)
                     last_line_count = current_count
+                    
+                    # 解析进度并更新 .progress.json
+                    current, total = parse_llm_progress(lines)
+                    if total > 0:
+                        write_progress(
+                            4, '阶段4 LLM内容总结',
+                            progress=f'{current}/{total}',
+                            message=f'LLM处理中 {current}/{total} ({current*100//total}%)'
+                        )
             except Exception:
                 pass
 
@@ -318,14 +391,27 @@ def run_phase4():
         print(f'  ✗ LLM内容总结失败', file=sys.stderr)
         if stderr:
             print(f'  {stderr}', file=sys.stderr)
+        write_progress(4, '阶段4 LLM内容总结', status='error', message='LLM内容总结失败')
     else:
         print('  ✓ LLM内容总结完成', file=sys.stderr)
+        # 解析最终完成数量
+        try:
+            with open(log_path, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+            current, total = parse_llm_progress(lines)
+            if total > 0:
+                write_progress(4, '阶段4 LLM内容总结', progress=f'{total}/{total}', message=f'LLM完成 {total}/{total}')
+            else:
+                write_progress(4, '阶段4 LLM内容总结', progress='1/1', message='LLM完成（无需重跑）')
+        except Exception:
+            write_progress(4, '阶段4 LLM内容总结', progress='1/1', message='LLM完成')
 
 # ============================================================
 # 阶段5: 热点主题
 # ============================================================
 def run_phase5():
     milestone('阶段5: 生成热点主题')
+    write_progress(5, '阶段5 生成热点主题', progress='0/1', message='运行gen_hot_topics.py')
     result = subprocess.run(
         [sys.executable, f'{BASE_DIR}/gen_hot_topics.py'],
         capture_output=True, text=True, encoding='utf-8'
@@ -339,12 +425,14 @@ def run_phase5():
             print(f'  {stderr}', file=sys.stderr)
     else:
         print('  ✓ 热点主题生成完成', file=sys.stderr)
+    write_progress(5, '阶段5 生成热点主题', progress='1/1', message='热点主题生成完成')
 
 # ============================================================
 # 阶段6: HTML生成
 # ============================================================
 def run_phase6():
     milestone('阶段6: 生成HTML看板')
+    write_progress(6, '阶段6 生成HTML看板', progress='0/1', message='运行build_dashboard.py')
     result = subprocess.run(
         [sys.executable, f'{BASE_DIR}/build_dashboard.py'],
         capture_output=True, text=True, encoding='utf-8'
@@ -358,12 +446,14 @@ def run_phase6():
             print(f'  {stderr}', file=sys.stderr)
     else:
         print('  ✓ HTML看板生成完成', file=sys.stderr)
+    write_progress(6, '阶段6 生成HTML看板', progress='1/1', message='HTML看板生成完成')
 
 # ============================================================
 # 阶段7: Git推送
 # ============================================================
 def run_phase7():
     milestone('阶段7: Git推送')
+    write_progress(7, '阶段7 Git推送', progress='0/1', message='执行git add/commit/push')
     
     # 获取当前ISO周编号
     today = datetime.now()
@@ -378,6 +468,7 @@ def run_phase7():
     )
     if result_add.returncode != 0:
         print(f'  ✗ git add 失败', file=sys.stderr)
+        write_progress(7, '阶段7 Git推送', status='error', message='git add 失败')
         return
     
     # 检查是否有变更需要提交
@@ -388,6 +479,7 @@ def run_phase7():
     )
     if not result_status.stdout.strip():
         print(f'  → 无文件变更，跳过Git推送', file=sys.stderr)
+        write_progress(7, '阶段7 Git推送', progress='1/1', message='无文件变更，跳过Git推送')
         return
     
     # git commit
@@ -401,6 +493,7 @@ def run_phase7():
         print(f'  ✗ git commit 失败', file=sys.stderr)
         if result_commit.stderr:
             print(f'  {result_commit.stderr}', file=sys.stderr)
+        write_progress(7, '阶段7 Git推送', status='error', message='git commit 失败')
         return
     
     # git push
@@ -413,9 +506,11 @@ def run_phase7():
         print(f'  ✗ git push 失败', file=sys.stderr)
         if result_push.stderr:
             print(f'  {result_push.stderr}', file=sys.stderr)
+        write_progress(7, '阶段7 Git推送', status='error', message='git push 失败')
         return
     
     print(f'  ✓ Git推送完成: {commit_msg}', file=sys.stderr)
+    write_progress(7, '阶段7 Git推送', progress='1/1', message=f'Git推送完成: {commit_msg}')
 
 # ============================================================
 # 主入口
@@ -444,6 +539,7 @@ def main():
         run_phase6()
     elif args.full:
         # 全流程模式
+        clear_progress()  # 清理旧进度
         milestone('开始执行充电UP主榜单全流程')
         print(f'  时间: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', file=sys.stderr)
         print(f'  目录: {BASE_DIR}', file=sys.stderr)
@@ -471,6 +567,7 @@ def main():
         run_phase7()
 
         milestone('全部完成!')
+        write_progress(8, '全部完成', status='completed', message='周榜更新全部完成，Git推送成功')
         print(f'  HTML文件: {BASE_DIR}/charging_up_dashboard.html', file=sys.stderr)
         print(f'  完成时间: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', file=sys.stderr)
     else:
