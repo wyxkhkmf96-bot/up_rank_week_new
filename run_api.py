@@ -35,6 +35,8 @@ ARCH = os.path.join(BASE, 'result_code3_arch_charge.json')
 
 PROMPT_VERSION = 'v1'
 FORCE = '--force' in sys.argv
+MAX_RETRIES = 3       # 单个UP的API调用最多尝试次数（含首次）
+RETRY_DELAY = 2       # 重试基础间隔（秒），按次数递增：2s、4s
 
 class Tee:
     def __init__(self, path):
@@ -102,22 +104,27 @@ def call_api(up_name, videos):
         video_list.append(f'{title} | {tid}/{sub} | {tag} | {asr_short}')
     video_str = '\n'.join(video_list)
     prompt = PROMPT_BASE.format(up_name=up_name, vid_cnt=len(videos), video_list=video_str)
-    try:
-        resp = requests.post(
-            'http://bxk.bilibili.co/api/bxk/private_chat',
-            headers={'Content-Type': 'application/json; charset=utf-8', 'User-Agent': 'Mozilla/5.0'},
-            json={'kid': '1081', 'query': prompt, 'chat_mod': 'bot'},
-            timeout=60,
-        )
-        obj = resp.json()
-        if obj.get('code') == 0:
-            data = obj.get('data', {})
-            answer = data.get('answer', '') if isinstance(data, dict) else ''
-            if answer:
-                return answer.strip()
-        return f'[API错误] code={obj.get("code")} msg={obj.get("msg")}'
-    except Exception as e:
-        return f'[异常] {e}'
+    last_err = '[异常] 未知错误'
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            resp = requests.post(
+                'http://bxk.bilibili.co/api/bxk/private_chat',
+                headers={'Content-Type': 'application/json; charset=utf-8', 'User-Agent': 'Mozilla/5.0'},
+                json={'kid': '1081', 'query': prompt, 'chat_mod': 'bot'},
+                timeout=60,
+            )
+            obj = resp.json()
+            if obj.get('code') == 0:
+                data = obj.get('data', {})
+                answer = data.get('answer', '') if isinstance(data, dict) else ''
+                if answer:
+                    return answer.strip()
+            last_err = f'[API错误] code={obj.get("code")} msg={obj.get("msg")}'
+        except Exception as e:
+            last_err = f'[异常] {e}'
+        if attempt < MAX_RETRIES:
+            time.sleep(RETRY_DELAY * attempt)
+    return last_err
 
 
 def load_old():
@@ -248,6 +255,29 @@ def main():
         if (i + 1) % 10 == 0 or i + 1 == len(todo):
             save(new_summaries)
         time.sleep(0.4)
+
+    # 收尾补跑：主循环结束后仍有错误的UP，自动再补最多 FINAL_ROUNDS 轮
+    FINAL_ROUNDS = 3
+    for round_no in range(1, FINAL_ROUNDS + 1):
+        failed = [uid for uid in up_ids
+                  if str(new_summaries.get(uid, {}).get('summary', '')).startswith(('[API', '[异常', '[超时'))]
+        if not failed:
+            break
+        print(f'\n收尾补跑第 {round_no} 轮：剩余 {len(failed)} 个错误UP')
+        error_count = 0
+        for j, uid in enumerate(failed):
+            up_name = up_name_map.get(uid, uid)
+            videos = videos_by_up.get(uid, [])
+            new_hash = compute_up_hash(up_name, videos) if videos else 'no_videos'
+            result = call_api(up_name, videos)
+            new_summaries[uid] = {'summary': result, 'input_hash': new_hash}
+            has_err = result.startswith('[API') or result.startswith('[异常')
+            if has_err:
+                error_count += 1
+            status = '✗' if has_err else '✓'
+            print(f'  [补{round_no}轮 {j+1}/{len(failed)}] {status} UP{uid} {up_name}: {result[:80]}')
+            time.sleep(0.4)
+        save(new_summaries)
 
     save(new_summaries)
     print(f'\n完成内容总结！共{len(new_summaries)}个UP（重跑{len(todo)}，错误{error_count}），JSON已保存: {JSON_OUT}')
