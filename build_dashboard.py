@@ -822,23 +822,63 @@ function weeklyGetFilteredUPS() {
   return r;
 }
 
+// 懒加载：初始渲染20个，滚动到底部附近时增量渲染，避免一次性画几百个图表卡顿
+const WEEKLY_INIT_BATCH = 20;
+const WEEKLY_MORE_BATCH = 30;
+let weeklyFilteredCache = [];
+let weeklyRenderedCount = 0;
+let weeklyObserver = null;
+
+function weeklyUpdateCount() {
+  const lt = weeklySelTids.length === 0 ? '全部分区' : weeklySelTids.join('、');
+  const lbMap = { 'all': '', 'new': ' · 本期新上榜', 'continuous': ' · 连续上榜' };
+  document.getElementById('board-count').textContent = `${lt}${lbMap[weeklyBoardType]} · 共 ${weeklyFilteredCache.length} 位UP主`;
+}
+
+function weeklyRenderMore(batchSize) {
+  const board = document.getElementById('up-board');
+  const start = weeklyRenderedCount;
+  const batch = weeklyFilteredCache.slice(start, start + batchSize);
+  batch.forEach((up, i) => board.appendChild(weeklyBuildUpCard(up, start + i + 1)));
+  weeklyRenderedCount += batch.length;
+  setTimeout(() => batch.forEach(up => weeklyRenderChart(up.up_id)), 50);
+  weeklyUpdateCount();
+  const sentinel = document.getElementById('weekly-scroll-sentinel');
+  if (weeklyRenderedCount < weeklyFilteredCache.length) {
+    board.appendChild(sentinel);  // appendChild 会把哨兵移到末尾
+  } else if (sentinel.parentNode) {
+    sentinel.parentNode.removeChild(sentinel);
+  }
+}
+
 function weeklyRenderBoard() {
   const board = document.getElementById('up-board');
   board.innerHTML = '';
   Object.keys(weeklyChartInstances).forEach(id => {
     if (weeklyChartInstances[id]) { weeklyChartInstances[id].destroy(); delete weeklyChartInstances[id]; }
   });
-  const filtered = weeklyGetFilteredUPS();
-  const top20 = filtered.slice(0, 20);
-  const lt = weeklySelTids.length === 0 ? '全部分区' : weeklySelTids.join('、');
-  const lbMap = { 'all': '', 'new': ' · 本期新上榜', 'continuous': ' · 连续上榜' };
-  document.getElementById('board-count').textContent = `${lt}${lbMap[weeklyBoardType]} · 共 ${filtered.length} 位UP主，展示前 ${top20.length} 名`;
-  if (top20.length === 0) {
+  if (weeklyObserver) { weeklyObserver.disconnect(); weeklyObserver = null; }
+  weeklyFilteredCache = weeklyGetFilteredUPS();
+  weeklyRenderedCount = 0;
+  if (weeklyFilteredCache.length === 0) {
+    weeklyUpdateCount();
     board.innerHTML = '<div class="no-results"><div class="icon">🔍</div>所选分区暂无上榜UP主</div>';
     return;
   }
-  top20.forEach((up, idx) => board.appendChild(weeklyBuildUpCard(up, idx + 1)));
-  setTimeout(() => top20.forEach(up => weeklyRenderChart(up.up_id)), 50);
+  let sentinel = document.getElementById('weekly-scroll-sentinel');
+  if (!sentinel) {
+    sentinel = document.createElement('div');
+    sentinel.id = 'weekly-scroll-sentinel';
+    sentinel.style.height = '1px';
+  }
+  board.appendChild(sentinel);  // 先挂到DOM，weeklyRenderMore 里才能通过 getElementById 找到
+  weeklyRenderMore(WEEKLY_INIT_BATCH);
+  weeklyObserver = new IntersectionObserver(entries => {
+    if (entries.some(e => e.isIntersecting) && weeklyRenderedCount < weeklyFilteredCache.length) {
+      weeklyRenderMore(WEEKLY_MORE_BATCH);
+    }
+  }, { rootMargin: '600px' });
+  weeklyObserver.observe(sentinel);
 }
 
 function weeklyDownloadCSV() {
@@ -1081,18 +1121,59 @@ function darkGetFiltered() {
   return r;
 }
 
+// 黑马榜懒加载：与新星榜一致，初始20个，滚动增量渲染
+const DARK_INIT_BATCH = 20;
+const DARK_MORE_BATCH = 30;
+let darkFilteredCache = [];
+let darkRenderedCount = 0;
+let darkObserver = null;
+
+function darkUpdateCount() {
+  const lt = darkSelTids.length === 0 ? '全部分区' : darkSelTids.join('、');
+  const lbMap = { 'all': '', 'new': ' · 本期新上榜', 'continuous': ' · 连续上榜' };
+  document.getElementById('dark-board-count').textContent = `${lt}${lbMap[darkBoardType]} · 共 ${darkFilteredCache.length} 位黑马UP`;
+}
+
+function darkRenderMore(batchSize) {
+  const board = document.getElementById('dark-board');
+  const start = darkRenderedCount;
+  const batch = darkFilteredCache.slice(start, start + batchSize);
+  batch.forEach((up, i) => board.appendChild(darkBuildUpCard(up, start + i + 1)));
+  darkRenderedCount += batch.length;
+  darkUpdateCount();
+  const sentinel = document.getElementById('dark-scroll-sentinel');
+  if (darkRenderedCount < darkFilteredCache.length) {
+    board.appendChild(sentinel);
+  } else if (sentinel.parentNode) {
+    sentinel.parentNode.removeChild(sentinel);
+  }
+}
+
 function darkRenderBoard() {
   const board = document.getElementById('dark-board');
   board.innerHTML = '';
-  const filtered = darkGetFiltered();
-  const lt = darkSelTids.length === 0 ? '全部分区' : darkSelTids.join('、');
-  const lbMap = { 'all': '', 'new': ' · 本期新上榜', 'continuous': ' · 连续上榜' };
-  document.getElementById('dark-board-count').textContent = `${lt}${lbMap[darkBoardType]} · 共 ${filtered.length} 位黑马UP`;
-  if (filtered.length === 0) {
+  if (darkObserver) { darkObserver.disconnect(); darkObserver = null; }
+  darkFilteredCache = darkGetFiltered();
+  darkRenderedCount = 0;
+  if (darkFilteredCache.length === 0) {
+    darkUpdateCount();
     board.innerHTML = '<div class="no-results"><div class="icon">🔍</div>所选分区暂无黑马UP</div>';
     return;
   }
-  filtered.forEach((up, idx) => board.appendChild(darkBuildUpCard(up, idx + 1)));
+  let sentinel = document.getElementById('dark-scroll-sentinel');
+  if (!sentinel) {
+    sentinel = document.createElement('div');
+    sentinel.id = 'dark-scroll-sentinel';
+    sentinel.style.height = '1px';
+  }
+  board.appendChild(sentinel);
+  darkRenderMore(DARK_INIT_BATCH);
+  darkObserver = new IntersectionObserver(entries => {
+    if (entries.some(e => e.isIntersecting) && darkRenderedCount < darkFilteredCache.length) {
+      darkRenderMore(DARK_MORE_BATCH);
+    }
+  }, { rootMargin: '600px' });
+  darkObserver.observe(sentinel);
 }
 
 function darkFmtGrowth(n) {
