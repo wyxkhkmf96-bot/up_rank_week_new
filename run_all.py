@@ -150,12 +150,12 @@ def submit_and_wait(label, sql, output_path, timeout=1800, phase_info=None):
 def run_code1():
     with open(f'{BASE_DIR}/code1_up_rank.sql', 'r', encoding='utf-8') as f:
         sql = f.read().strip()
-    return submit_and_wait('代码1-新星UP榜', sql, f'{BASE_DIR}/result_code1_up_rank.json')
+    return submit_and_wait('代码1-新星UP榜', sql, f'{BASE_DIR}/result_code1_up_rank.json', timeout=3600)
 
 def run_code6():
     with open(f'{BASE_DIR}/code6_darkhorse.sql', 'r', encoding='utf-8') as f:
         sql = f.read().strip()
-    return submit_and_wait('代码6-黑马UP榜', sql, f'{BASE_DIR}/result_code6_darkhorse.json')
+    return submit_and_wait('代码6-黑马UP榜', sql, f'{BASE_DIR}/result_code6_darkhorse.json', timeout=3600)
 
 def build_code2_sql(in_clause):
     with open(f'{BASE_DIR}/code2_daily_gmv_vv.sql', 'r', encoding='utf-8') as f:
