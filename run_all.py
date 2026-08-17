@@ -74,16 +74,32 @@ def clear_progress():
 # ============================================================
 # 通用工具
 # ============================================================
-def api_request(url, method='GET', data=None):
+def api_request(url, method='GET', data=None, retries=None):
+    """调用 Adhoc API。
+
+    GET（状态/结果轮询）是幂等的，默认重试4次，避免偶发网络抖动打断已跑几十分钟的查询；
+    POST（提交查询）不重试，防止同一条SQL被重复提交。
+    """
+    if retries is None:
+        retries = 4 if method == 'GET' else 1
     headers = {
         'Adhoc-Username': CONFIG['username'],
         'Adhoc-Token': CONFIG['token'],
         'Content-Type': 'application/json; charset=utf-8',
     }
     body = json.dumps(data, ensure_ascii=False).encode('utf-8') if data else None
-    req = urllib.request.Request(url, data=body, headers=headers, method=method)
-    with urllib.request.urlopen(req, timeout=60) as resp:
-        return json.loads(resp.read().decode('utf-8'))
+    last_err = None
+    for attempt in range(1, retries + 1):
+        try:
+            req = urllib.request.Request(url, data=body, headers=headers, method=method)
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                return json.loads(resp.read().decode('utf-8'))
+        except Exception as e:
+            last_err = e
+            if attempt < retries:
+                print(f'  ! API请求失败({attempt}/{retries})，{5 * attempt}s后重试: {e}', file=sys.stderr)
+                time.sleep(5 * attempt)
+    raise last_err
 
 def milestone(msg):
     """打印大阶段里程碑"""
