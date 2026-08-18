@@ -44,3 +44,6 @@ merge_video_tab.py
 video_hot_topics.json
 video_top100.json
 学claude/
+
+# 无人值守任务日志
+log/auto_weekly_*.log
