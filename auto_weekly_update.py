@@ -141,55 +141,75 @@ def load_meta():
         return json.load(f)
 
 
-def recover_code6(phase1_output):
-    """code6 线程崩了但服务端查询可能已完成：用 Query ID 直接捞结果"""
-    m = re.search(r'\[代码6-黑马UP榜\] Query ID: (\d+)', phase1_output)
-    if not m:
-        log('✗ 日志里找不到 code6 的 Query ID，无法补救')
-        return False
-    qid = m.group(1)
-    log(f'→ 尝试用 Query ID {qid} 直接拉取黑马榜结果（不重跑）')
+def save_meta(meta):
+    with open(PHASE1_META, 'w', encoding='utf-8') as f:
+        json.dump(meta, f, ensure_ascii=False, indent=2)
+
+
+def recover_query(qid, label, out_name):
+    """线程崩了但服务端查询可能已完成：用 Query ID 直接捞结果，返回 up_id 列表"""
+    log(f'→ 尝试用 Query ID {qid} 直接拉取 {label} 结果（不重跑）')
     names = {1: 'SUCCESS', 2: 'FAILED', 3: 'RUNNING', 4: 'QUEUED', 5: 'STOPPED'}
     waited = 0
     while waited < 3600:
         status = adhoc_get(f'/api/adhoc/outer/v2/sql/status/{qid}').get('data')
-        log(f'   [{waited}s] {names.get(status, status)}')
-        if status == 1:
-            result = adhoc_get(f'/api/adhoc/outer/v2/sql/result/{qid}')
-            out = os.path.join(BASE, 'result_code6_darkhorse.json')
-            with open(out, 'w', encoding='utf-8') as f:
-                json.dump(result, f, ensure_ascii=False, indent=2)
-            rows = result.get('data', {}).get('result', [])
-            dark = [str(r['up_id']) for r in rows]
-            meta = load_meta()
-            meta['up_ids_dark'] = dark
-            with open(PHASE1_META, 'w', encoding='utf-8') as f:
-                json.dump(meta, f, ensure_ascii=False, indent=2)
-            log(f'✓ 黑马榜补救成功 {len(dark)} 个UP，已回填 .phase1_meta.json')
-            return True
-        if status in (2, 5):
-            log(f'✗ code6 查询状态 {names.get(status)}，无法补救')
-            return False
+        if not isinstance(status, int):
+            log(f'   [{waited}s] 状态返回异常，继续等')
+        else:
+            log(f'   [{waited}s] {names.get(status, status)}')
+            if status == 1:
+                result = adhoc_get(f'/api/adhoc/outer/v2/sql/result/{qid}')
+                with open(os.path.join(BASE, out_name), 'w', encoding='utf-8') as f:
+                    json.dump(result, f, ensure_ascii=False, indent=2)
+                ids = [str(r['up_id']) for r in result.get('data', {}).get('result', [])]
+                log(f'✓ {label} 补救成功 {len(ids)} 个UP')
+                return ids
+            if status in (2, 5):
+                log(f'✗ {label} 查询状态 {names.get(status)}，无法补救')
+                return None
         time.sleep(15)
         waited += 15
-    log('✗ 等待 code6 结果超时')
-    return False
+    log(f'✗ 等待 {label} 结果超时')
+    return None
 
 
 def phase1():
+    boards = (
+        ('up_ids_new', '代码1-新星UP榜', 'result_code1_up_rank.json'),
+        ('up_ids_dark', '代码6-黑马UP榜', 'result_code6_darkhorse.json'),
+    )
     for attempt in range(1, PHASE_MAX_ATTEMPT + 1):
+        t0 = time.time()
         rc, out = run_step(['run_all.py', '--phase', '1'], f'阶段1 取数(第{attempt}次)')
-        meta = load_meta() if os.path.exists(PHASE1_META) else {}
+
+        # 关键校验：meta 必须是本次运行写的。run_all.py 失败时不会重写它，
+        # 沿用上一周的 UP 列表会产出"榜单数据没变、上榜次数照样+1"的错榜（2026-W36 踩过）。
+        fresh = os.path.exists(PHASE1_META) and os.path.getmtime(PHASE1_META) >= t0
+        if fresh:
+            meta = load_meta()
+        else:
+            meta = {}
+            log('⚠ .phase1_meta.json 未被本次运行重写，判定阶段1未成功（绝不沿用旧UP列表）')
+
+        # 任一榜为空：服务端查询可能其实成功了，只是客户端线程崩了，用 Query ID 直接捞
+        for key, label, fname in boards:
+            if meta.get(key):
+                continue
+            m = re.search(rf'\[{re.escape(label)}\] Query ID: (\d+)', out)
+            if not m:
+                log(f'✗ 日志里找不到 {label} 的 Query ID，无法补救')
+                continue
+            ids = recover_query(m.group(1), label, fname)
+            if ids:
+                meta[key] = ids
+                save_meta(meta)
+                log(f'   已回填 .phase1_meta.json[{key}]')
+
         new_ids = meta.get('up_ids_new') or []
         dark_ids = meta.get('up_ids_dark') or []
         if new_ids and dark_ids:
             log(f'✓ 阶段1 完成：新星 {len(new_ids)}，黑马 {len(dark_ids)}')
             return True
-        if new_ids and not dark_ids:
-            # 新星榜有了、黑马榜空——典型的 code6 线程被打断，优先补救而不是重跑
-            log('⚠ 新星榜有结果但黑马榜为空，走 code6 补救流程')
-            if recover_code6(out):
-                return True
         log(f'⚠ 阶段1 第{attempt}次未拿到完整结果'
             f'（新星 {len(new_ids)}，黑马 {len(dark_ids)}）')
     return False

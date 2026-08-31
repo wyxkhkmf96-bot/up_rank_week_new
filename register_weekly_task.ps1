@@ -13,7 +13,7 @@
 
 param(
     [string]$TaskName = 'ChargingUP-WeeklyRank',
-    [string]$At = '2026-08-24T11:40:00',
+    [string]$At = '',
     [switch]$Weekly,
     [switch]$Unregister
 )
@@ -30,7 +30,17 @@ if ($Unregister) {
 
 if (-not (Test-Path $launcher)) { throw "Launcher not found: $launcher" }
 
-$runAt = [datetime]::Parse($At)
+# No -At given: start at the NEXT Monday 11:40. Never default to a past timestamp -
+# StartWhenAvailable would treat it as a missed trigger and fire an immediate catch-up run.
+if ([string]::IsNullOrWhiteSpace($At)) {
+    $runAt = (Get-Date).Date.AddHours(11).AddMinutes(40)
+    while ($runAt.DayOfWeek -ne 'Monday' -or $runAt -le (Get-Date)) {
+        $runAt = $runAt.AddDays(1)
+    }
+    Write-Host ("No -At given, using next Monday: {0:yyyy-MM-dd HH:mm}" -f $runAt)
+} else {
+    $runAt = [datetime]::Parse($At)
+}
 $action = New-ScheduledTaskAction -Execute $launcher -WorkingDirectory $base
 
 if ($Weekly) {

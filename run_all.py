@@ -126,6 +126,14 @@ def submit_and_wait(label, sql, output_path, timeout=1800, phase_info=None):
     while elapsed < timeout:
         status_resp = api_request(f"{CONFIG['baseUrl']}/api/adhoc/outer/v2/sql/status/{query_id}")
         status = status_resp.get('data')
+        # 平台异常时 data 可能是 dict/None（2026-W36 遇到 HTTP 500 重试后返回错误信封），
+        # 直接丢给 names.get() 会因 dict 不可哈希抛 TypeError 把整个线程打死。当成一次抖动继续轮询。
+        if not isinstance(status, int):
+            print(f'  ! [{label}] 状态返回异常，继续轮询: '
+                  f'{json.dumps(status_resp, ensure_ascii=False)[:200]}', file=sys.stderr)
+            time.sleep(10)
+            elapsed += 10
+            continue
         status_name = names.get(status, f'UNKNOWN({status})')
         if status != last_status:
             print(f'  → [{label}] [{elapsed}s] {status_name}', file=sys.stderr)
@@ -216,7 +224,13 @@ def run_phase1():
 
     results = {}
     def _run_and_store(key, fn):
-        results[key] = fn()
+        try:
+            results[key] = fn()
+        except Exception:
+            # 线程里的异常不会传播到主线程，必须自己打出来，否则只剩一句"失败"无从排查
+            import traceback
+            print(f'  ✗ [{key}] 线程异常:\n{traceback.format_exc()}', file=sys.stderr)
+            results[key] = None
 
     threads = [
         threading.Thread(target=_run_and_store, args=('code1', run_code1)),
