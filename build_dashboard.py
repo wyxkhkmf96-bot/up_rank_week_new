@@ -276,14 +276,40 @@ gen_time = datetime.now().strftime('%Y-%m-%d')
 
 # __HTML_TEMPLATE_PLACEHOLDER__
 
+# Chart.js / xlsx 内联进 HTML，不走 CDN。
+# jsdelivr 在公司网络下会间歇性连不上（WinError 10054 / 超时），一旦 Chart 未定义，
+# weeklyRenderMore 的 forEach 会在第一个UP就抛异常并静默中断，整批趋势图全空白（2026-W39 踩过）。
+VENDOR_DIR = BASE + r'\vendor'
+VENDOR_LIBS = [
+    ('chart.umd.min.js', 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js'),
+    ('xlsx.full.min.js', 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'),
+]
+
+
+def build_vendor_scripts():
+    parts = []
+    for fname, cdn_url in VENDOR_LIBS:
+        path = os.path.join(VENDOR_DIR, fname)
+        if os.path.exists(path) and os.path.getsize(path) > 10000:
+            with open(path, 'r', encoding='utf-8') as f:
+                parts.append(f'<script>\n{f.read()}\n</script>')
+            print(f'  ✓ 已内联 {fname} ({os.path.getsize(path) // 1024} KB)')
+        else:
+            # vendor 文件缺失时退回 CDN，保证构建不中断（但云端/弱网可能又出现空白图）
+            parts.append(f'<script src="{cdn_url}"></script>')
+            print(f'  ⚠ vendor/{fname} 缺失，退回 CDN 引用')
+    return '\n'.join(parts)
+
+
+vendor_scripts = build_vendor_scripts()
+
 html_head = f"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>充电UP主分析看板</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+{vendor_scripts}
 <style>
   :root {{
     --pink: #FB7299;
