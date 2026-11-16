@@ -89,3 +89,5 @@ FROM (
 ) t
 WHERE rn <= 5  --只保留top5稿件
 ORDER BY `稿件近30日GMV` DESC
+-- 平台规则：外层 ORDER BY 必须带 LIMIT；上限远大于实际行数，不截断数据
+LIMIT 1000000

@@ -51,3 +51,5 @@ FROM top3_ups t
 LEFT JOIN up_names u ON t.similar_up_id = u.up_id
 GROUP BY t.up_id, t.uname
 ORDER BY t.up_id
+-- 平台规则：外层 ORDER BY 必须带 LIMIT；上限远大于实际行数，不截断数据
+LIMIT 1000000

@@ -25,11 +25,12 @@ vv_daily AS (
         a.up_id,
         a.log_date AS dt,
         SUM(a.vv) AS daily_vv
-    FROM b_dwb.dwb_ctnt_arch_play_avid_mid_vv_vt_i_d a
+    FROM b_dws.dws_flow_cnsm_content_consume_wide_1d_d a  -- 原表权限回收，2026-11-16 切换
     INNER JOIN b_ods.ods_db2824_t_archive_a_hr b
         ON a.avid = b.aid
         AND a.up_id = b.mid
     WHERE a.log_date BETWEEN b_current_datedelta('-30') AND b_current_datedelta('-1')
+          AND a.pid_type = 'pink7'  -- 仅移动端
           AND b.log_date = b_current_datedelta('-1')
           AND b.log_hour = '23'
           AND a.up_id IN ({IN_CLAUSE})

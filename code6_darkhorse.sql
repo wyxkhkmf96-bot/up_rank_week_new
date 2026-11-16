@@ -54,8 +54,9 @@ vv_recent_30d AS (
         up_id,
         avid,
         SUM(vv) AS vv
-    FROM b_dwb.dwb_ctnt_arch_play_avid_mid_vv_vt_i_d
+    FROM b_dws.dws_flow_cnsm_content_consume_wide_1d_d  -- 原表权限回收，2026-11-16 切换
     WHERE log_date between b_current_datedelta('-30') and b_current_datedelta('-1')
+      AND pid_type = 'pink7'  -- 仅移动端
     GROUP BY up_id, avid
 ),
 
@@ -211,3 +212,5 @@ WHERE DATEDIFF(date_sub(current_date, 1), b.first_charge_date) > 29
   --)
 
 ORDER BY `30天环比增速` DESC
+-- 平台规则：外层 ORDER BY 必须带 LIMIT；上限远大于实际行数，不截断数据
+LIMIT 1000000
